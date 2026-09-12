@@ -3031,7 +3031,7 @@ select:focus-visible {
   font-weight: 700;
   letter-spacing: 0.12em;
   font-size: clamp(1.55rem, 3vw, 1.95rem);
-  text-shadow: 0 0 18px rgba(80, 180, 255, 0.35);
+  text-shadow: none;
 }
 
 .game-undercover > p,
@@ -3572,30 +3572,47 @@ select:focus-visible {
   margin-top: 1.25rem;
 }
 
-/* Undercover ops (MIB / MI mission UI) */
+/* Undercover ops — solid dark, clear contrast (no glow wash) */
+body.theme-undercover {
+  background: #070a10 !important;
+  background-image: none !important;
+}
+
+body.theme-undercover::before {
+  opacity: 0.12;
+}
+
+body.theme-undercover .site-nav {
+  background: rgba(7, 10, 16, 0.92);
+  border-bottom: 1px solid rgba(90, 160, 220, 0.25);
+}
+
+body.theme-undercover .nav-brand,
+body.theme-undercover .nav-links a.is-active {
+  color: #7ef0ff;
+}
+
+body.theme-undercover .nav-links a {
+  color: #b7c4d6;
+}
+
+body.theme-undercover .mobile-nav {
+  background: rgba(12, 16, 24, 0.96);
+  border-color: rgba(90, 160, 220, 0.3);
+}
+
 .undercover-ops {
   position: relative;
-  color: #e8eef8;
+  color: #f2f5fa;
+  background: transparent;
 }
 
 .uc-ops-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(800px 400px at 10% 0%, rgba(0, 160, 255, 0.12), transparent 55%),
-    radial-gradient(600px 400px at 100% 20%, rgba(255, 50, 80, 0.1), transparent 50%),
-    linear-gradient(180deg, #07090e 0%, #120e18 50%, #0a0c12 100%);
-}
-
-.undercover-ops > * {
-  position: relative;
-  z-index: 1;
+  display: none;
 }
 
 .undercover-ops .uc-back {
-  color: rgba(120, 210, 255, 0.85);
+  color: #7ef0ff;
   font-family: var(--game-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -3603,7 +3620,7 @@ select:focus-visible {
 }
 
 .undercover-ops .uc-back:hover {
-  color: #7ef0ff;
+  color: #c8f7ff;
 }
 
 .undercover-ops .uc-kicker {
@@ -3612,20 +3629,25 @@ select:focus-visible {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-size: 0.78rem;
+  text-shadow: none;
 }
 
 .undercover-ops .uc-head h1 {
   font-family: var(--game);
-  color: #f4f8ff;
+  color: #ffffff !important;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  text-shadow: 0 0 20px rgba(58, 208, 255, 0.25);
+  text-shadow: none !important;
+  filter: none;
 }
 
 .undercover-ops .muted,
-.undercover-ops .uc-mono {
-  color: rgba(180, 200, 220, 0.75) !important;
+.undercover-ops .uc-mono,
+.undercover-ops .uc-note,
+.undercover-ops .tiny.muted {
+  color: #b4c0d0 !important;
   font-family: var(--game-mono);
+  text-shadow: none;
 }
 
 .undercover-ops .uc-lang-card,
@@ -3636,9 +3658,9 @@ select:focus-visible {
 .undercover-ops .uc-guess input,
 .undercover-ops .uc-modal-card,
 .undercover-ops .uc-out {
-  background: rgba(12, 16, 24, 0.92);
-  border-color: rgba(58, 208, 255, 0.25);
-  color: #e8eef8;
+  background: #121826;
+  border: 1.5px solid rgba(90, 180, 230, 0.45);
+  color: #f2f5fa;
 }
 
 .undercover-ops .uc-lang-card strong,
@@ -3648,39 +3670,136 @@ select:focus-visible {
 .undercover-ops .uc-modal-card h2,
 .undercover-ops .uc-word {
   font-family: var(--game);
-  color: #7ef0ff;
+  color: #7ef0ff !important;
+  text-shadow: none;
+}
+
+.undercover-ops .uc-lang-card p,
+.undercover-ops .uc-role p,
+.undercover-ops .uc-player-btn span {
+  color: #c5d0de !important;
+}
+
+.undercover-ops .uc-lang-card.is-soon {
+  background: #1a2030;
+  opacity: 1;
+}
+
+.undercover-ops .uc-lang-card.is-soon strong {
+  color: #9eb0c4 !important;
+}
+
+.undercover-ops .uc-lang-card.is-soon p {
+  color: #8a9bb0 !important;
+}
+
+.undercover-ops .uc-pill.ready {
+  background: #1f4d34;
+  color: #9dffc8;
+}
+
+.undercover-ops .uc-pill.soon {
+  background: #4a2a38;
+  color: #ffc0d2;
+}
+
+.undercover-ops .uc-role.civilian {
+  background: #141b28;
 }
 
 .undercover-ops .uc-role.impostor {
   background: linear-gradient(145deg, #1a0a10, #2a1018);
-  border-color: rgba(255, 77, 109, 0.35);
+  border-color: rgba(255, 100, 120, 0.45);
+}
+
+.undercover-ops .uc-role.impostor h2 {
+  color: #ff8fa3 !important;
+}
+
+.undercover-ops .uc-role.impostor p {
+  color: #efc8d0 !important;
+}
+
+.undercover-ops .uc-role.mrwhite {
+  background: #1a2230;
 }
 
 .undercover-ops .btn-primary {
   font-family: var(--game);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  background: linear-gradient(135deg, #3ad0ff, #ff4d6d);
-  color: #061018;
+  background: linear-gradient(135deg, #2eb8e6, #e85a78);
+  color: #061018 !important;
   border: none;
-  box-shadow: 0 0 20px rgba(58, 208, 255, 0.35);
+  box-shadow: none;
+  text-shadow: none;
 }
 
 .undercover-ops .btn-soft,
 .undercover-ops .btn-ghost {
   font-family: var(--game-mono);
-  border-color: rgba(58, 208, 255, 0.35);
-  color: #7ef0ff;
-  background: rgba(10, 20, 30, 0.7);
+  border-color: rgba(90, 180, 230, 0.5);
+  color: #7ef0ff !important;
+  background: #0e1520;
 }
 
 .undercover-ops .uc-modal {
-  background: rgba(4, 8, 14, 0.88);
+  background: rgba(4, 8, 14, 0.92);
+}
+
+.undercover-ops .uc-name-field span {
+  color: #b4c0d0;
+}
+
+.undercover-ops .uc-name-field input,
+.undercover-ops .uc-guess input {
+  color: #f2f5fa;
+  background: #0e1520;
 }
 
 .badge-live {
-  background: rgba(0, 200, 120, 0.2) !important;
+  background: #1f4d34 !important;
   color: #9dffc8 !important;
+}
+
+/* Ready pages: keep muted text clearly readable */
+.home-page .muted,
+.stories-toolbar .muted,
+.section-head .muted,
+.story-preview .muted {
+  color: #6a5560;
+}
+
+.home-hero-glam h1 {
+  color: #2b2227;
+  text-shadow: none;
+}
+
+.home-hero-glam .hero-lead {
+  color: #8d3f61;
+}
+
+.games-page .section-head h1 {
+  color: #8d3f61;
+  text-shadow: none;
+}
+
+.games-page .muted {
+  color: #6a5560;
+}
+
+.game-undercover > p,
+.game-undercover .game-meta {
+  color: rgba(240, 245, 255, 0.9);
+}
+
+.game-question-cards h2 {
+  color: #8d3f61;
+}
+
+.game-question-cards > p,
+.game-question-cards .game-meta {
+  color: #5c4a52;
 }
 
 /* bumper loading */

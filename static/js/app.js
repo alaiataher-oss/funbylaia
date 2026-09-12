@@ -153,12 +153,23 @@ function render() {
     location.hash = "#/games";
     return;
   }
-  if (route === "stories") return renderStoriesPage(app);
-  if (route === "story") return renderStoryPage(app, parts[1]);
-  if (route === "games") return renderGamesPage(app);
+  if (route === "stories") {
+    document.body.classList.remove("theme-undercover");
+    return renderStoriesPage(app);
+  }
+  if (route === "story") {
+    document.body.classList.remove("theme-undercover");
+    return renderStoryPage(app, parts[1]);
+  }
+  if (route === "games") {
+    document.body.classList.remove("theme-undercover");
+    return renderGamesPage(app);
+  }
   if (route === "undercover") {
+    document.body.classList.add("theme-undercover");
     return renderUndercover(app, { navHTML, setMeta, showToast });
   }
+  document.body.classList.remove("theme-undercover");
   return renderHome(app);
 }
 
