@@ -268,16 +268,35 @@ function renderHome(root) {
   const latest = publishedStories().slice(0, 3);
   root.innerHTML = `
     ${navHTML("home")}
-    <main class="page home-page">
-      <header class="home-hero-play home-hero-simple">
-        <div class="hero-orbits" aria-hidden="true">
-          <span class="float-orb o1"></span>
-          <span class="float-orb o2"></span>
-          <span class="float-orb o3"></span>
+    <main class="page home-page home-glam">
+      <header class="home-hero-glam">
+        <div class="hero-glam-bg" aria-hidden="true">
+          <span class="spark s1"></span>
+          <span class="spark s2"></span>
+          <span class="spark s3"></span>
+          <span class="spark s4"></span>
         </div>
-        <p class="home-kicker">a little corner of the internet</p>
-        <h1>Your life might already feel full, but leave the door open for someone, or a story, that could unexpectedly matter.</h1>
-        <p class="hero-lead">Two ways to be here: read something that feels familiar, or play something with the people around you.</p>
+        <div class="hero-glam-top">
+          <p class="home-kicker">a little corner of the internet</p>
+          <span class="xoxo-stamp" aria-hidden="true">xoxo</span>
+        </div>
+        <h1>Your life might already feel full, but leave the door open.</h1>
+        <p class="hero-lead">For someone, or a story, that could unexpectedly matter.</p>
+        <div class="hero-chips" role="navigation" aria-label="Jump in">
+          <a class="hero-chip chip-me" href="#/stories">
+            <span class="chip-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M5 4h9a2 2 0 012 2v14l-4.5-2.5L7 20V6a2 2 0 012-2z" stroke="currentColor" stroke-width="1.8"/><path d="M9 8h5M9 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </span>
+            <span class="chip-text"><strong>Personal</strong><em>for your me time</em></span>
+          </a>
+          <a class="hero-chip chip-hang" href="#/games">
+            <span class="chip-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><rect x="3" y="8" width="18" height="10" rx="3" stroke="currentColor" stroke-width="1.8"/><circle cx="8" cy="13" r="1.4" fill="currentColor"/><circle cx="16" cy="13" r="1.4" fill="currentColor"/></svg>
+            </span>
+            <span class="chip-text"><strong>Games</strong><em>for hangouts</em></span>
+          </a>
+        </div>
+        <p class="hero-scroll-hint" aria-hidden="true">pick a door ↓</p>
       </header>
 
       <section class="entry-duo" aria-label="Choose how to begin">
@@ -292,8 +311,8 @@ function renderHome(root) {
             </svg>
           </span>
           <h2>Personal Stories</h2>
-          <p>Quiet reads for when you’re alone and want something that feels strangely familiar.</p>
-          <span class="entry-go">Read a story →</span>
+          <p>Quiet reads for alone hours — the strangely familiar kind.</p>
+          <span class="entry-go">Open the diary →</span>
         </a>
 
         <a class="entry-card entry-games" href="#/games">
@@ -308,13 +327,9 @@ function renderHome(root) {
             </svg>
           </span>
           <h2>Games</h2>
-          <p>Play with friends, family, or someone you’re still figuring out.</p>
-          <span class="entry-go">See the games →</span>
+          <p>When you’re with people and “what should we do?” needs a plot twist.</p>
+          <span class="entry-go">Start the night →</span>
         </a>
-      </section>
-
-      <section class="home-soft-note" aria-label="A little more">
-        <p>Stories for the moments you spend with yourself. Games for the ones you share.</p>
       </section>
 
       ${
@@ -332,7 +347,7 @@ function renderHome(root) {
       <section class="preview-section games-preview-home">
         <div class="games-mini-grid">
           <a class="game-mini undercover-mini game-mini-link" href="#/games">
-            <p class="badge-soon">Coming Soon</p>
+            <p class="badge-soon">Playable</p>
             <h3>Undercover</h3>
             <p>Clues, accusations, a little chaos.</p>
           </a>
