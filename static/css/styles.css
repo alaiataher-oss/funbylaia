@@ -3450,3 +3450,48 @@ select:focus-visible {
   background: rgba(0, 200, 120, 0.2) !important;
   color: #9dffc8 !important;
 }
+
+/* bumper loading */
+.bumper-load {
+  width: min(220px, 55vw);
+  height: 3px;
+  margin: 1.25rem auto 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.bumper-load-bar {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f3b6cf, #ffe8f1, #e986ae);
+  animation: bumper-load 3.6s ease-in-out forwards;
+}
+
+.bumper-loading-label {
+  margin: 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 245, 250, 0.65);
+}
+
+.bumper-unlock {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
+@keyframes bumper-load {
+  0% { width: 0%; }
+  70% { width: 82%; }
+  100% { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bumper-load-bar {
+    animation: none;
+    width: 100%;
+  }
+}

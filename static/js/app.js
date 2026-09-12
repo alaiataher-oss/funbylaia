@@ -6,6 +6,7 @@ import {
 } from "./stories-data.js";
 import { renderUndercover, startUndercover } from "./undercover.js";
 import { playUndercoverJingle } from "./undercover-jingle.js";
+import { playRomanticBumper } from "./romantic-bumper.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -132,7 +133,7 @@ function render() {
   const route = parts[0] || "home";
 
   if (!hasFinishedLanding() && route !== "landing" && route !== "bumper") {
-    location.hash = "#/landing";
+    location.hash = "#/bumper";
     return;
   }
 
@@ -143,7 +144,11 @@ function render() {
     app.classList.add("page-enter");
   }
 
-  if (route === "landing") return renderLanding(app);
+  // Landing skipped — redirect to bumper
+  if (route === "landing") {
+    location.hash = "#/bumper";
+    return;
+  }
   if (route === "bumper") return renderBumper(app);
   // Hide unfinished QC / bank routes from visitors
   if (route === "questions" || route === "cards" || route === "bank" || route === "tbc") {
@@ -159,43 +164,13 @@ function render() {
   return renderHome(app);
 }
 
-/* ---------- landing / bumper (kept) ---------- */
-function renderLanding(root) {
-  setMeta({
-    title: "alaia fun — a quiet corner of the internet",
-    description: "Stories for alone time, and games for the moments you share.",
-  });
-  root.innerHTML = `
-    <section class="invite-screen scene-3d" id="landing">
-      <div class="scene-depth" aria-hidden="true">
-        <span class="orb orb-a"></span>
-        <span class="orb orb-b"></span>
-        <span class="orb orb-c"></span>
-      </div>
-      <div class="invite-stage" data-tilt>
-        <div class="invite-card invite-card-3d">
-          <p class="invite-kicker">threshold</p>
-          <h1>
-            <span class="line-soft">YOU ARE ABOUT TO ENTER</span>
-            <span class="line-hard">A PLACE FOR THOUGHTS, QUESTIONS, AND UNNECESSARY RABBIT HOLES.</span>
-          </h1>
-          <p class="invite-hook">Most people skim past moments that could rewire how they see everything. Stay for one thought — don’t expect to leave thinking the same way.</p>
-          <div class="invite-actions">
-            <button class="btn btn-primary btn-3d" type="button" data-enter>I’ll take the risk</button>
-            <button class="btn btn-ghost" type="button" data-skip>not now</button>
-          </div>
-        </div>
-      </div>
-    </section>`;
-  const go = () => {
-    location.hash = "#/bumper";
-  };
-  root.querySelector("[data-enter]").onclick = go;
-  root.querySelector("[data-skip]").onclick = go;
-}
-
+/* ---------- bumper (landing skipped) ---------- */
 function renderBumper(root) {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  setMeta({
+    title: "alaia fun",
+    description: "A quiet corner for stories and games.",
+  });
   root.innerHTML = `
     <section class="bumper-screen" id="bumper" aria-label="Opening bumper">
       <div class="film-letterbox" aria-hidden="true"></div>
@@ -204,29 +179,85 @@ function renderBumper(root) {
         <div class="bumper-stripe alt"></div>
       </div>
       <div class="bumper-stage ${reduce ? "is-ready" : ""}">
-        <p class="bumper-kicker">scene 01 · mindset</p>
+        <p class="bumper-kicker">loading · soft entrance</p>
         <div class="bumper-logo" aria-hidden="true">♡</div>
         <h1 class="bumper-title">
           <span class="bumper-line">The way you change your life</span>
           <span class="bumper-line accent">is by changing the mind you meet it with.</span>
         </h1>
         <p class="bumper-sub">Not a new city. Not a new plan first.<br/>A different way of seeing — then everything else can move.</p>
-        <button class="btn btn-primary btn-3d bumper-cta" type="button" data-continue ${reduce ? "" : "hidden"}>Continue</button>
+        <div class="bumper-load" aria-hidden="true">
+          <span class="bumper-load-bar"></span>
+        </div>
+        <p class="bumper-loading-label" data-load-label>Preparing your corner…</p>
+        <button class="btn btn-primary btn-3d bumper-cta" type="button" data-continue ${reduce ? "" : "hidden"}>Enter</button>
+        <button class="btn btn-ghost bumper-unlock" type="button" data-unlock hidden>Tap for sound ♡</button>
       </div>
     </section>`;
+
   const stage = root.querySelector(".bumper-stage");
   const cta = root.querySelector("[data-continue]");
-  const reveal = () => {
-    stage.classList.add("is-ready");
-    cta.hidden = false;
-    live("Continue when you’re ready");
-  };
-  if (reduce) cta.hidden = false;
-  else setTimeout(reveal, 2800);
-  cta.onclick = () => {
+  const unlock = root.querySelector("[data-unlock]");
+  const label = root.querySelector("[data-load-label]");
+  let finished = false;
+  let soundStarted = false;
+
+  const goHome = () => {
+    if (finished) return;
+    finished = true;
     markLandingDone();
     location.hash = "#/home";
   };
+
+  const startSound = () => {
+    if (soundStarted) return;
+    soundStarted = true;
+    playRomanticBumper();
+  };
+
+  const reveal = () => {
+    stage.classList.add("is-ready");
+    if (cta) cta.hidden = false;
+    if (label) label.textContent = "Ready when you are";
+    live("Enter when you’re ready");
+  };
+
+  // Try romantic pad immediately; if autoplay blocked, offer tap
+  playRomanticBumper().then(() => {
+    soundStarted = true;
+  }).catch(() => {
+    if (unlock) unlock.hidden = false;
+  });
+  // Some browsers resolve play without throwing but stay silent — offer unlock briefly
+  setTimeout(() => {
+    if (!soundStarted && unlock) unlock.hidden = false;
+  }, 400);
+
+  unlock?.addEventListener("click", () => {
+    startSound();
+    unlock.hidden = true;
+  });
+
+  // First tap anywhere also unlocks audio
+  root.querySelector("#bumper")?.addEventListener(
+    "pointerdown",
+    () => {
+      startSound();
+      if (unlock) unlock.hidden = true;
+    },
+    { once: true }
+  );
+
+  if (reduce) {
+    if (cta) cta.hidden = false;
+    setTimeout(goHome, 1200);
+  } else {
+    setTimeout(reveal, 2600);
+    // Auto-enter home after loading mood
+    setTimeout(goHome, 3800);
+  }
+
+  cta.onclick = goHome;
 }
 
 /* ---------- HOME ---------- */
@@ -537,6 +568,6 @@ function renderGamesPage(root) {
 }
 
 window.addEventListener("hashchange", render);
-if (!hasFinishedLanding()) location.hash = "#/landing";
+if (!hasFinishedLanding()) location.hash = "#/bumper";
 else if (!location.hash || location.hash === "#") location.hash = "#/home";
 render();
