@@ -7,6 +7,7 @@ import {
 import { renderUndercover, startUndercover } from "./undercover.js";
 import { playUndercoverJingle } from "./undercover-jingle.js";
 import { playRomanticBumper } from "./romantic-bumper.js";
+import { renderTicTacToe, startTicTacToe } from "./tictactoe.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -132,6 +133,11 @@ function render() {
   const parts = pathPart.split("/").filter(Boolean);
   const route = parts[0] || "home";
 
+  if (route !== "tictactoe" && typeof app._tttCleanup === "function") {
+    app._tttCleanup();
+    app._tttCleanup = null;
+  }
+
   if (!hasFinishedLanding()) {
     markLandingDone();
   }
@@ -168,6 +174,10 @@ function render() {
   if (route === "undercover") {
     document.body.classList.add("theme-undercover");
     return renderUndercover(app, { navHTML, setMeta, showToast });
+  }
+  if (route === "tictactoe") {
+    document.body.classList.remove("theme-undercover");
+    return renderTicTacToe(app, { navHTML, setMeta, showToast });
   }
   document.body.classList.remove("theme-undercover");
   return renderHome(app);
@@ -554,6 +564,21 @@ function renderGamesPage(root) {
           </a>
         </article>
 
+        <article class="game-card game-ttt">
+          <div class="game-card-top">
+            <span class="badge-soon badge-live" style="color:#3d6b45;background:rgba(120,180,120,0.25)">PLAYABLE</span>
+          </div>
+          <h2>Tic-Tac-Toe for Long Distance</h2>
+          <p class="uc-tagline" style="color:var(--berry)">Miles apart, one move away. ♡</p>
+          <p>Create a code, send it to your person, both tap ready, then take turns — even across time zones.</p>
+          <ul class="game-meta">
+            <li><strong>Best for:</strong> Long-distance couples &amp; faraway friends</li>
+            <li><strong>Players:</strong> 2</li>
+            <li><strong>Mood:</strong> Soft, playful, connected</li>
+          </ul>
+          <a class="btn btn-ttt-cta" href="#/tictactoe" data-start-ttt>Play Together →</a>
+        </article>
+
         <article class="game-card game-question-cards">
           <div class="game-card-top">
             <span class="badge-soon" aria-label="Coming soon">Coming Soon</span>
@@ -576,6 +601,9 @@ function renderGamesPage(root) {
   root.querySelector("[data-start-undercover]")?.addEventListener("click", () => {
     playUndercoverJingle();
     startUndercover();
+  });
+  root.querySelector("[data-start-ttt]")?.addEventListener("click", () => {
+    startTicTacToe();
   });
 }
 

@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routers.api import router as api_router
+from app.routers.ttt import router as ttt_router
 from app.sheets import start_retry_worker
 from app.store import ensure_store
 
@@ -30,6 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(api_router)
+app.include_router(ttt_router)
 
 static_dir = ROOT / "static"
 try:
