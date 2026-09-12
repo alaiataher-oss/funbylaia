@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "name": "funbylaia",
+  "functions": {
+    "app/main.py": {
+      "maxDuration": 30
+    }
+  }
+}

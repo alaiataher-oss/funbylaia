@@ -1,0 +1,1442 @@
+[
+  {
+    "changeId": "e328b858-73dc-4702-8541-74bb07059873",
+    "timestamp": "2026-09-12T17:48:48Z",
+    "questionId": "q1001",
+    "action": "CREATED",
+    "changedFields": [
+      "id",
+      "question",
+      "followUp",
+      "primaryCategory",
+      "occasions",
+      "settings",
+      "relationships",
+      "closeness",
+      "depth",
+      "feelings",
+      "themes",
+      "groupSafe",
+      "sensitivity",
+      "status",
+      "timesShown",
+      "createdAt",
+      "updatedAt"
+    ],
+    "previousValue": null,
+    "newValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Would you share it with someone?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "active",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T17:48:48Z",
+      "updatedAt": "2026-09-12T17:48:48Z"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "358b39f1-eb9f-46cc-a3de-15d644ca7f8a",
+    "timestamp": "2026-09-12T17:48:48Z",
+    "questionId": "q1001",
+    "action": "UPDATED",
+    "changedFields": [
+      "followUp"
+    ],
+    "previousValue": {
+      "followUp": "Would you share it with someone?"
+    },
+    "newValue": {
+      "followUp": "Updated follow-up?"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "7faf308a-1882-49fb-99bb-9cdb1189f21e",
+    "timestamp": "2026-09-12T17:48:48Z",
+    "questionId": "q1001",
+    "action": "ARCHIVED",
+    "changedFields": [
+      "status"
+    ],
+    "previousValue": {
+      "status": "active"
+    },
+    "newValue": {
+      "status": "archived"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "8cdd75a9-241b-4269-9541-bf18c760e33c",
+    "timestamp": "2026-09-12T17:48:48Z",
+    "questionId": "q1001",
+    "action": "DELETED",
+    "changedFields": [
+      "*"
+    ],
+    "previousValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Updated follow-up?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "archived",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T17:48:48Z",
+      "updatedAt": "2026-09-12T17:48:48Z"
+    },
+    "newValue": null,
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "355d4518-54f1-40bf-a715-ed97cdaa215d",
+    "timestamp": "2026-09-12T18:04:03Z",
+    "questionId": "q1001",
+    "action": "CREATED",
+    "changedFields": [
+      "id",
+      "question",
+      "followUp",
+      "primaryCategory",
+      "occasions",
+      "settings",
+      "relationships",
+      "closeness",
+      "depth",
+      "feelings",
+      "themes",
+      "groupSafe",
+      "sensitivity",
+      "status",
+      "timesShown",
+      "createdAt",
+      "updatedAt"
+    ],
+    "previousValue": null,
+    "newValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Would you share it with someone?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "active",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:04:03Z",
+      "updatedAt": "2026-09-12T18:04:03Z"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "41029e67-4cdc-4663-a79a-a4ece01ea2b0",
+    "timestamp": "2026-09-12T18:04:03Z",
+    "questionId": "q1001",
+    "action": "UPDATED",
+    "changedFields": [
+      "followUp"
+    ],
+    "previousValue": {
+      "followUp": "Would you share it with someone?"
+    },
+    "newValue": {
+      "followUp": "Updated follow-up?"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "504ebaf7-6877-4dc0-9ed4-74a6ee396d9c",
+    "timestamp": "2026-09-12T18:04:03Z",
+    "questionId": "q1001",
+    "action": "ARCHIVED",
+    "changedFields": [
+      "status"
+    ],
+    "previousValue": {
+      "status": "active"
+    },
+    "newValue": {
+      "status": "archived"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "956e3d80-89fe-4590-b5be-ac8e7aa50fda",
+    "timestamp": "2026-09-12T18:04:03Z",
+    "questionId": "q1001",
+    "action": "DELETED",
+    "changedFields": [
+      "*"
+    ],
+    "previousValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Updated follow-up?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "archived",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:04:03Z",
+      "updatedAt": "2026-09-12T18:04:03Z"
+    },
+    "newValue": null,
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "78d70324-9f92-4c7d-950a-7337755d8b11",
+    "timestamp": "2026-09-12T18:04:51Z",
+    "questionId": "q1001",
+    "action": "CREATED",
+    "changedFields": [
+      "id",
+      "question",
+      "followUp",
+      "primaryCategory",
+      "occasions",
+      "settings",
+      "relationships",
+      "closeness",
+      "depth",
+      "feelings",
+      "themes",
+      "groupSafe",
+      "sensitivity",
+      "status",
+      "timesShown",
+      "createdAt",
+      "updatedAt"
+    ],
+    "previousValue": null,
+    "newValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Would you share it with someone?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "active",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:04:51Z",
+      "updatedAt": "2026-09-12T18:04:51Z"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "503a7be4-fb6d-4ead-8ec4-9260b96e2a4a",
+    "timestamp": "2026-09-12T18:04:51Z",
+    "questionId": "q1001",
+    "action": "UPDATED",
+    "changedFields": [
+      "followUp"
+    ],
+    "previousValue": {
+      "followUp": "Would you share it with someone?"
+    },
+    "newValue": {
+      "followUp": "Updated follow-up?"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "01f9cb45-f9aa-459b-b467-75bf10ea9987",
+    "timestamp": "2026-09-12T18:04:51Z",
+    "questionId": "q1001",
+    "action": "ARCHIVED",
+    "changedFields": [
+      "status"
+    ],
+    "previousValue": {
+      "status": "active"
+    },
+    "newValue": {
+      "status": "archived"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "5ac14221-fb38-4551-be74-4236a3da6fe2",
+    "timestamp": "2026-09-12T18:04:51Z",
+    "questionId": "q1001",
+    "action": "DELETED",
+    "changedFields": [
+      "*"
+    ],
+    "previousValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Updated follow-up?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "archived",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:04:51Z",
+      "updatedAt": "2026-09-12T18:04:51Z"
+    },
+    "newValue": null,
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "47e51336-b5c7-40ee-9801-4d112dc98a4a",
+    "timestamp": "2026-09-12T18:05:15Z",
+    "questionId": "q1001",
+    "action": "CREATED",
+    "changedFields": [
+      "id",
+      "question",
+      "followUp",
+      "primaryCategory",
+      "occasions",
+      "settings",
+      "relationships",
+      "closeness",
+      "depth",
+      "feelings",
+      "themes",
+      "groupSafe",
+      "sensitivity",
+      "status",
+      "timesShown",
+      "createdAt",
+      "updatedAt"
+    ],
+    "previousValue": null,
+    "newValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Would you share it with someone?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "active",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:05:15Z",
+      "updatedAt": "2026-09-12T18:05:15Z"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "0b7d46a2-a777-4f7a-b7b4-fcf211c5f6eb",
+    "timestamp": "2026-09-12T18:05:15Z",
+    "questionId": "q1001",
+    "action": "UPDATED",
+    "changedFields": [
+      "followUp"
+    ],
+    "previousValue": {
+      "followUp": "Would you share it with someone?"
+    },
+    "newValue": {
+      "followUp": "Updated follow-up?"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "33a6196f-33b1-4c79-9aa1-2cd5dc7b3a81",
+    "timestamp": "2026-09-12T18:05:15Z",
+    "questionId": "q1001",
+    "action": "ARCHIVED",
+    "changedFields": [
+      "status"
+    ],
+    "previousValue": {
+      "status": "active"
+    },
+    "newValue": {
+      "status": "archived"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "7187b8a4-bb70-43ad-bf86-5ec03d97d423",
+    "timestamp": "2026-09-12T18:05:15Z",
+    "questionId": "q1001",
+    "action": "DELETED",
+    "changedFields": [
+      "*"
+    ],
+    "previousValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Updated follow-up?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "archived",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:05:15Z",
+      "updatedAt": "2026-09-12T18:05:15Z"
+    },
+    "newValue": null,
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "996045bc-7c81-42ea-840f-782ea6f3585a",
+    "timestamp": "2026-09-12T18:05:56Z",
+    "questionId": "q1001",
+    "action": "CREATED",
+    "changedFields": [
+      "id",
+      "question",
+      "followUp",
+      "primaryCategory",
+      "occasions",
+      "settings",
+      "relationships",
+      "closeness",
+      "depth",
+      "feelings",
+      "themes",
+      "groupSafe",
+      "sensitivity",
+      "status",
+      "timesShown",
+      "createdAt",
+      "updatedAt"
+    ],
+    "previousValue": null,
+    "newValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Would you share it with someone?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "active",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:05:56Z",
+      "updatedAt": "2026-09-12T18:05:56Z"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "7f009fc7-51a1-4673-8104-376fa7571d30",
+    "timestamp": "2026-09-12T18:05:56Z",
+    "questionId": "q1001",
+    "action": "UPDATED",
+    "changedFields": [
+      "followUp"
+    ],
+    "previousValue": {
+      "followUp": "Would you share it with someone?"
+    },
+    "newValue": {
+      "followUp": "Updated follow-up?"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "25f680d9-baa6-4af0-85fe-7b24cd84aacc",
+    "timestamp": "2026-09-12T18:05:56Z",
+    "questionId": "q1001",
+    "action": "ARCHIVED",
+    "changedFields": [
+      "status"
+    ],
+    "previousValue": {
+      "status": "active"
+    },
+    "newValue": {
+      "status": "archived"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "6abbfa1d-ff76-456a-b6dc-2f8da6cfe1be",
+    "timestamp": "2026-09-12T18:05:56Z",
+    "questionId": "q1001",
+    "action": "DELETED",
+    "changedFields": [
+      "*"
+    ],
+    "previousValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Updated follow-up?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "archived",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:05:56Z",
+      "updatedAt": "2026-09-12T18:05:56Z"
+    },
+    "newValue": null,
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "bd02fe63-6707-4147-a3b8-e166af0c05da",
+    "timestamp": "2026-09-12T18:06:23Z",
+    "questionId": "q1001",
+    "action": "CREATED",
+    "changedFields": [
+      "id",
+      "question",
+      "followUp",
+      "primaryCategory",
+      "occasions",
+      "settings",
+      "relationships",
+      "closeness",
+      "depth",
+      "feelings",
+      "themes",
+      "groupSafe",
+      "sensitivity",
+      "status",
+      "timesShown",
+      "createdAt",
+      "updatedAt"
+    ],
+    "previousValue": null,
+    "newValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Would you share it with someone?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "active",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:06:23Z",
+      "updatedAt": "2026-09-12T18:06:23Z"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "27da7a06-6cae-4051-aa1e-decd6bd3ef21",
+    "timestamp": "2026-09-12T18:06:23Z",
+    "questionId": "q1001",
+    "action": "UPDATED",
+    "changedFields": [
+      "followUp"
+    ],
+    "previousValue": {
+      "followUp": "Would you share it with someone?"
+    },
+    "newValue": {
+      "followUp": "Updated follow-up?"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "85579cb5-8277-41e4-a606-d0013b2f5034",
+    "timestamp": "2026-09-12T18:06:23Z",
+    "questionId": "q1001",
+    "action": "ARCHIVED",
+    "changedFields": [
+      "status"
+    ],
+    "previousValue": {
+      "status": "active"
+    },
+    "newValue": {
+      "status": "archived"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "45eb2241-936d-4da2-b614-8891a55e3e9d",
+    "timestamp": "2026-09-12T18:06:23Z",
+    "questionId": "q1001",
+    "action": "DELETED",
+    "changedFields": [
+      "*"
+    ],
+    "previousValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Updated follow-up?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "archived",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:06:23Z",
+      "updatedAt": "2026-09-12T18:06:23Z"
+    },
+    "newValue": null,
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "5e15b115-5c3d-4856-b67d-801a74bcf368",
+    "timestamp": "2026-09-12T18:06:47Z",
+    "questionId": "q1001",
+    "action": "CREATED",
+    "changedFields": [
+      "id",
+      "question",
+      "followUp",
+      "primaryCategory",
+      "occasions",
+      "settings",
+      "relationships",
+      "closeness",
+      "depth",
+      "feelings",
+      "themes",
+      "groupSafe",
+      "sensitivity",
+      "status",
+      "timesShown",
+      "createdAt",
+      "updatedAt"
+    ],
+    "previousValue": null,
+    "newValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Would you share it with someone?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "active",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:06:47Z",
+      "updatedAt": "2026-09-12T18:06:47Z"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "ea68af5b-5eb4-4695-9e85-c4f06748e43e",
+    "timestamp": "2026-09-12T18:06:47Z",
+    "questionId": "q1001",
+    "action": "UPDATED",
+    "changedFields": [
+      "followUp"
+    ],
+    "previousValue": {
+      "followUp": "Would you share it with someone?"
+    },
+    "newValue": {
+      "followUp": "Updated follow-up?"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "7515912f-1ba1-43ce-99bd-72e6bacae7f7",
+    "timestamp": "2026-09-12T18:06:47Z",
+    "questionId": "q1001",
+    "action": "ARCHIVED",
+    "changedFields": [
+      "status"
+    ],
+    "previousValue": {
+      "status": "active"
+    },
+    "newValue": {
+      "status": "archived"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "0d42b606-d7c5-4ddb-b7c0-5b0d26f03ccd",
+    "timestamp": "2026-09-12T18:06:47Z",
+    "questionId": "q1001",
+    "action": "DELETED",
+    "changedFields": [
+      "*"
+    ],
+    "previousValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Updated follow-up?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "archived",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:06:47Z",
+      "updatedAt": "2026-09-12T18:06:47Z"
+    },
+    "newValue": null,
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "7041669a-4cf9-4698-a828-c6833bcc11a5",
+    "timestamp": "2026-09-12T18:21:26Z",
+    "questionId": "q1001",
+    "action": "CREATED",
+    "changedFields": [
+      "id",
+      "question",
+      "followUp",
+      "primaryCategory",
+      "occasions",
+      "settings",
+      "relationships",
+      "closeness",
+      "depth",
+      "feelings",
+      "themes",
+      "groupSafe",
+      "sensitivity",
+      "status",
+      "timesShown",
+      "createdAt",
+      "updatedAt"
+    ],
+    "previousValue": null,
+    "newValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Would you share it with someone?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "active",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:21:26Z",
+      "updatedAt": "2026-09-12T18:21:26Z"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "7b338665-d963-47c4-83f1-77d6d0eabeca",
+    "timestamp": "2026-09-12T18:21:26Z",
+    "questionId": "q1001",
+    "action": "UPDATED",
+    "changedFields": [
+      "followUp"
+    ],
+    "previousValue": {
+      "followUp": "Would you share it with someone?"
+    },
+    "newValue": {
+      "followUp": "Updated follow-up?"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "c897cab6-b59f-45e9-adcb-b32e5677e7fb",
+    "timestamp": "2026-09-12T18:21:26Z",
+    "questionId": "q1001",
+    "action": "ARCHIVED",
+    "changedFields": [
+      "status"
+    ],
+    "previousValue": {
+      "status": "active"
+    },
+    "newValue": {
+      "status": "archived"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "cdba781d-7a51-4167-bd9e-1764b2e504d4",
+    "timestamp": "2026-09-12T18:21:26Z",
+    "questionId": "q1001",
+    "action": "DELETED",
+    "changedFields": [
+      "*"
+    ],
+    "previousValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Updated follow-up?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "archived",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:21:26Z",
+      "updatedAt": "2026-09-12T18:21:26Z"
+    },
+    "newValue": null,
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "6de97301-4d96-43fd-8626-6ac76b233056",
+    "timestamp": "2026-09-12T18:22:45Z",
+    "questionId": "q1001",
+    "action": "CREATED",
+    "changedFields": [
+      "id",
+      "question",
+      "followUp",
+      "primaryCategory",
+      "occasions",
+      "settings",
+      "relationships",
+      "closeness",
+      "depth",
+      "feelings",
+      "themes",
+      "groupSafe",
+      "sensitivity",
+      "status",
+      "timesShown",
+      "createdAt",
+      "updatedAt"
+    ],
+    "previousValue": null,
+    "newValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Would you share it with someone?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "active",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:22:45Z",
+      "updatedAt": "2026-09-12T18:22:45Z"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "a6791249-4573-4229-bdf2-75560b17ea04",
+    "timestamp": "2026-09-12T18:22:45Z",
+    "questionId": "q1001",
+    "action": "UPDATED",
+    "changedFields": [
+      "followUp"
+    ],
+    "previousValue": {
+      "followUp": "Would you share it with someone?"
+    },
+    "newValue": {
+      "followUp": "Updated follow-up?"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "8de862d8-cc71-4d8e-b572-7890bffa8135",
+    "timestamp": "2026-09-12T18:22:45Z",
+    "questionId": "q1001",
+    "action": "ARCHIVED",
+    "changedFields": [
+      "status"
+    ],
+    "previousValue": {
+      "status": "active"
+    },
+    "newValue": {
+      "status": "archived"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "257f2b3a-c5bc-46f8-bfcb-2a122f881f5f",
+    "timestamp": "2026-09-12T18:22:45Z",
+    "questionId": "q1001",
+    "action": "DELETED",
+    "changedFields": [
+      "*"
+    ],
+    "previousValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Updated follow-up?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "archived",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T18:22:45Z",
+      "updatedAt": "2026-09-12T18:22:45Z"
+    },
+    "newValue": null,
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "e8db9384-4bfb-4a2d-a683-7714679698b0",
+    "timestamp": "2026-09-12T19:00:06Z",
+    "questionId": "q1001",
+    "action": "CREATED",
+    "changedFields": [
+      "id",
+      "question",
+      "followUp",
+      "primaryCategory",
+      "occasions",
+      "settings",
+      "relationships",
+      "closeness",
+      "depth",
+      "feelings",
+      "themes",
+      "groupSafe",
+      "sensitivity",
+      "status",
+      "timesShown",
+      "createdAt",
+      "updatedAt"
+    ],
+    "previousValue": null,
+    "newValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Would you share it with someone?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "active",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T19:00:06Z",
+      "updatedAt": "2026-09-12T19:00:06Z"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "1ed77e45-f3a6-4ea9-ab83-4daadfc94654",
+    "timestamp": "2026-09-12T19:00:06Z",
+    "questionId": "q1001",
+    "action": "UPDATED",
+    "changedFields": [
+      "followUp"
+    ],
+    "previousValue": {
+      "followUp": "Would you share it with someone?"
+    },
+    "newValue": {
+      "followUp": "Updated follow-up?"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "d4c6849b-a0fe-4543-ad21-e19ef63b2f46",
+    "timestamp": "2026-09-12T19:00:06Z",
+    "questionId": "q1001",
+    "action": "ARCHIVED",
+    "changedFields": [
+      "status"
+    ],
+    "previousValue": {
+      "status": "active"
+    },
+    "newValue": {
+      "status": "archived"
+    },
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  },
+  {
+    "changeId": "42a35be7-c328-4e1a-b4fd-c0364979b5dc",
+    "timestamp": "2026-09-12T19:00:06Z",
+    "questionId": "q1001",
+    "action": "DELETED",
+    "changedFields": [
+      "*"
+    ],
+    "previousValue": {
+      "id": "q1001",
+      "question": "What tiny detail made today feel kinder than expected?",
+      "followUp": "Updated follow-up?",
+      "primaryCategory": "light-icebreaker",
+      "occasions": [
+        "casual-catch-up",
+        "no-particular-occasion"
+      ],
+      "settings": [
+        "two-people",
+        "group"
+      ],
+      "relationships": [
+        "friend",
+        "friends"
+      ],
+      "closeness": [
+        "just-met",
+        "getting-closer"
+      ],
+      "depth": "light",
+      "feelings": [
+        "curious"
+      ],
+      "themes": [
+        "test"
+      ],
+      "groupSafe": true,
+      "sensitivity": "low",
+      "status": "archived",
+      "timesShown": 0,
+      "createdAt": "2026-09-12T19:00:06Z",
+      "updatedAt": "2026-09-12T19:00:06Z"
+    },
+    "newValue": null,
+    "changedBy": "admin",
+    "syncStatus": "pending"
+  }
+]
