@@ -282,6 +282,7 @@ function renderHome(root) {
 
       <section class="entry-duo" aria-label="Choose how to begin">
         <a class="entry-card entry-stories" href="#/stories">
+          <span class="entry-for">for your me time</span>
           <span class="entry-icon" aria-hidden="true">
             <svg viewBox="0 0 64 64" width="56" height="56" fill="none">
               <rect x="12" y="10" width="28" height="38" rx="4" stroke="currentColor" stroke-width="2.2"/>
@@ -296,6 +297,7 @@ function renderHome(root) {
         </a>
 
         <a class="entry-card entry-games" href="#/games">
+          <span class="entry-for">for hangouts</span>
           <span class="entry-icon" aria-hidden="true">
             <svg viewBox="0 0 64 64" width="56" height="56" fill="none">
               <rect x="8" y="22" width="48" height="28" rx="10" stroke="currentColor" stroke-width="2.2"/>
