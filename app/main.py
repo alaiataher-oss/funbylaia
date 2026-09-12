@@ -32,7 +32,10 @@ app.add_middleware(
 app.include_router(api_router)
 
 static_dir = ROOT / "static"
-static_dir.mkdir(exist_ok=True)
+try:
+    static_dir.mkdir(exist_ok=True)
+except OSError:
+    pass
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
