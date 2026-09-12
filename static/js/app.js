@@ -8,6 +8,8 @@ import { renderUndercover, startUndercover } from "./undercover.js";
 import { playUndercoverJingle } from "./undercover-jingle.js";
 import { playRomanticBumper } from "./romantic-bumper.js";
 import { renderTicTacToe, startTicTacToe } from "./tictactoe.js";
+import { playTicTacToeJingle } from "./tictactoe-jingle.js";
+import { renderRsm, startRsm } from "./rsm.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -137,6 +139,10 @@ function render() {
     app._tttCleanup();
     app._tttCleanup = null;
   }
+  if (route !== "rsm" && typeof app._rsmCleanup === "function") {
+    app._rsmCleanup();
+    app._rsmCleanup = null;
+  }
 
   if (!hasFinishedLanding()) {
     markLandingDone();
@@ -160,26 +166,36 @@ function render() {
     return;
   }
   if (route === "stories") {
-    document.body.classList.remove("theme-undercover");
+    document.body.classList.remove("theme-undercover", "theme-ttt", "theme-rsm");
     return renderStoriesPage(app);
   }
   if (route === "story") {
-    document.body.classList.remove("theme-undercover");
+    document.body.classList.remove("theme-undercover", "theme-ttt", "theme-rsm");
     return renderStoryPage(app, parts[1]);
   }
   if (route === "games") {
-    document.body.classList.remove("theme-undercover");
+    document.body.classList.remove("theme-undercover", "theme-ttt", "theme-rsm");
     return renderGamesPage(app);
   }
   if (route === "undercover") {
     document.body.classList.add("theme-undercover");
+    document.body.classList.remove("theme-ttt", "theme-rsm");
     return renderUndercover(app, { navHTML, setMeta, showToast });
   }
   if (route === "tictactoe") {
     document.body.classList.remove("theme-undercover");
+    document.body.classList.add("theme-ttt");
+    document.body.classList.remove("theme-rsm");
     return renderTicTacToe(app, { navHTML, setMeta, showToast });
   }
+  if (route === "rsm") {
+    document.body.classList.remove("theme-undercover", "theme-ttt");
+    document.body.classList.add("theme-rsm");
+    return renderRsm(app, { navHTML, setMeta, showToast });
+  }
   document.body.classList.remove("theme-undercover");
+  document.body.classList.remove("theme-ttt");
+  document.body.classList.remove("theme-rsm");
   return renderHome(app);
 }
 
@@ -542,7 +558,10 @@ function renderGamesPage(root) {
             <div class="uc-card-scan"></div>
           </div>
           <div class="game-card-top">
-            <span class="badge-soon badge-live" aria-label="Ready to play">CLASSIFIED · PLAYABLE</span>
+            <div class="game-card-badges">
+              <span class="badge-soon badge-live" aria-label="Ready to play">CLASSIFIED · PLAYABLE</span>
+              <span class="badge-mode badge-offline" aria-label="Offline game">OFFLINE</span>
+            </div>
             <span class="uc-classified-stamp" aria-hidden="true">TOP SECRET</span>
           </div>
           <div class="uc-card-icons" aria-hidden="true">
@@ -565,18 +584,70 @@ function renderGamesPage(root) {
         </article>
 
         <article class="game-card game-ttt">
+          <div class="ttt-card-art" aria-hidden="true">
+            <div class="ttt-card-board">
+              <span class="ttt-mark-x">✕</span>
+              <span></span>
+              <span class="ttt-mark-o">◯</span>
+              <span></span>
+              <span class="ttt-mark-heart">♡</span>
+              <span></span>
+              <span class="ttt-mark-o">◯</span>
+              <span></span>
+              <span class="ttt-mark-x">✕</span>
+            </div>
+            <div class="ttt-card-glow"></div>
+          </div>
           <div class="game-card-top">
-            <span class="badge-soon badge-live" style="color:#3d6b45;background:rgba(120,180,120,0.25)">PLAYABLE</span>
+            <div class="game-card-badges">
+              <span class="badge-soon badge-live ttt-live-badge">PLAYABLE · 2 PLAYERS</span>
+              <span class="badge-mode badge-online" aria-label="Online multiplayer">ONLINE</span>
+            </div>
+            <span class="ttt-love-stamp" aria-hidden="true">LD ♡</span>
+          </div>
+          <div class="ttt-card-icons" aria-hidden="true">
+            <svg class="ttt-ico" viewBox="0 0 40 40" width="28" height="28"><path fill="currentColor" d="M20 34s-11-7.2-15.4-13.4C2.2 16.8 3.4 11.2 8.2 8.9c3.1-1.5 6.8-.5 9 2.1 2.2-2.6 5.9-3.6 9-2.1 4.8 2.3 6 7.9 3.6 11.7C31 26.8 20 34 20 34z"/></svg>
+            <svg class="ttt-ico" viewBox="0 0 40 40" width="28" height="28"><path fill="none" stroke="currentColor" stroke-width="2" d="M8 8h10v10H8zM22 8h10v10H22zM8 22h10v10H8zM22 22h10v10H22z"/></svg>
+            <svg class="ttt-ico" viewBox="0 0 40 40" width="28" height="28"><circle cx="20" cy="20" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M14 20h12M20 14v12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </div>
           <h2>Tic-Tac-Toe for Long Distance</h2>
-          <p class="uc-tagline" style="color:var(--berry)">Miles apart, one move away. ♡</p>
+          <p class="ttt-card-tagline">Miles apart, one move away. ♡</p>
           <p>Create a code, send it to your person, both tap ready, then take turns — even across time zones.</p>
           <ul class="game-meta">
             <li><strong>Best for:</strong> Long-distance couples &amp; faraway friends</li>
             <li><strong>Players:</strong> 2</li>
             <li><strong>Mood:</strong> Soft, playful, connected</li>
           </ul>
-          <a class="btn btn-ttt-cta" href="#/tictactoe" data-start-ttt>Play Together →</a>
+          <a class="btn btn-ttt-cta" href="#/tictactoe" data-start-ttt>
+            <span class="ttt-cta-ico" aria-hidden="true">▶</span>
+            PLAY TOGETHER
+          </a>
+        </article>
+
+        <article class="game-card game-rsm">
+          <div class="rsm-card-art" aria-hidden="true">
+            <div class="rsm-mini-chart"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <span class="rsm-art-ticker">LOVR +200%</span>
+          </div>
+          <div class="game-card-top">
+            <div class="game-card-badges">
+              <span class="badge-soon badge-live rsm-live-badge">PLAYABLE · 2–6</span>
+              <span class="badge-mode badge-online" aria-label="Online multiplayer">ONLINE</span>
+            </div>
+            <span class="rsm-stamp" aria-hidden="true">📈 OPEN</span>
+          </div>
+          <h2>Relationship Stock Market</h2>
+          <p class="rsm-card-tagline">Predict your people. Bet your cash. Panic together.</p>
+          <p>Five rounds of secret investments, market chaos, hold-or-sell drama, and friendship-based stock tips.</p>
+          <ul class="game-meta">
+            <li><strong>Best for:</strong> Couples, friend groups, game nights</li>
+            <li><strong>Players:</strong> 2–6</li>
+            <li><strong>Mood:</strong> Chaotic, social, replayable</li>
+          </ul>
+          <a class="btn btn-rsm-cta" href="#/rsm" data-start-rsm>
+            <span aria-hidden="true">▶</span>
+            OPEN THE MARKET
+          </a>
         </article>
 
         <article class="game-card game-question-cards">
@@ -603,7 +674,11 @@ function renderGamesPage(root) {
     startUndercover();
   });
   root.querySelector("[data-start-ttt]")?.addEventListener("click", () => {
+    playTicTacToeJingle();
     startTicTacToe();
+  });
+  root.querySelector("[data-start-rsm]")?.addEventListener("click", () => {
+    startRsm();
   });
 }
 

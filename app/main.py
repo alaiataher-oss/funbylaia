@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.routers.api import router as api_router
 from app.routers.ttt import router as ttt_router
+from app.routers.rsm import router as rsm_router
 from app.sheets import start_retry_worker
 from app.store import ensure_store
 
@@ -32,6 +33,7 @@ app.add_middleware(
 )
 app.include_router(api_router)
 app.include_router(ttt_router)
+app.include_router(rsm_router)
 
 static_dir = ROOT / "static"
 try:
