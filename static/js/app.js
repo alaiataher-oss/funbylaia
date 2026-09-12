@@ -282,24 +282,10 @@ function renderHome(root) {
         </div>
         <h1>Your life might already feel full, but leave the door open.</h1>
         <p class="hero-lead">For someone, or a story, that could unexpectedly matter.</p>
-        <div class="hero-chips" role="navigation" aria-label="Jump in">
-          <a class="hero-chip chip-me" href="#/stories">
-            <span class="chip-ico" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M5 4h9a2 2 0 012 2v14l-4.5-2.5L7 20V6a2 2 0 012-2z" stroke="currentColor" stroke-width="1.8"/><path d="M9 8h5M9 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-            </span>
-            <span class="chip-text"><strong>Personal</strong><em>for your me time</em></span>
-          </a>
-          <a class="hero-chip chip-hang" href="#/games">
-            <span class="chip-ico" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><rect x="3" y="8" width="18" height="10" rx="3" stroke="currentColor" stroke-width="1.8"/><circle cx="8" cy="13" r="1.4" fill="currentColor"/><circle cx="16" cy="13" r="1.4" fill="currentColor"/></svg>
-            </span>
-            <span class="chip-text"><strong>Games</strong><em>for hangouts</em></span>
-          </a>
-        </div>
-        <p class="hero-scroll-hint" aria-hidden="true">pick a door ↓</p>
+        <p class="hero-scroll-hint">pick a door ↓</p>
       </header>
 
-      <section class="entry-duo" aria-label="Choose how to begin">
+      <section class="entry-duo" aria-label="Pick a door">
         <a class="entry-card entry-stories" href="#/stories">
           <span class="entry-for">for your me time</span>
           <span class="entry-icon" aria-hidden="true">
@@ -311,7 +297,7 @@ function renderHome(root) {
             </svg>
           </span>
           <h2>Personal Stories</h2>
-          <p>Quiet reads for alone hours — the strangely familiar kind.</p>
+          <p>Quiet reads for alone hours, the strangely familiar kind.</p>
           <span class="entry-go">Open the diary →</span>
         </a>
 
