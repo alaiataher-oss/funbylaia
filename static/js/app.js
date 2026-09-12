@@ -132,9 +132,8 @@ function render() {
   const parts = pathPart.split("/").filter(Boolean);
   const route = parts[0] || "home";
 
-  if (!hasFinishedLanding() && route !== "landing" && route !== "bumper") {
-    location.hash = "#/bumper";
-    return;
+  if (!hasFinishedLanding()) {
+    markLandingDone();
   }
 
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -144,12 +143,11 @@ function render() {
     app.classList.add("page-enter");
   }
 
-  // Landing skipped — redirect to bumper
-  if (route === "landing") {
-    location.hash = "#/bumper";
+  // Landing + bumper skipped
+  if (route === "landing" || route === "bumper") {
+    location.hash = "#/home";
     return;
   }
-  if (route === "bumper") return renderBumper(app);
   // Hide unfinished QC / bank routes from visitors
   if (route === "questions" || route === "cards" || route === "bank" || route === "tbc") {
     location.hash = "#/games";
@@ -568,6 +566,8 @@ function renderGamesPage(root) {
 }
 
 window.addEventListener("hashchange", render);
-if (!hasFinishedLanding()) location.hash = "#/bumper";
-else if (!location.hash || location.hash === "#") location.hash = "#/home";
+if (!location.hash || location.hash === "#" || location.hash === "#/landing" || location.hash === "#/bumper") {
+  location.hash = "#/home";
+}
+if (!hasFinishedLanding()) markLandingDone();
 render();
