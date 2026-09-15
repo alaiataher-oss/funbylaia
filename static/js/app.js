@@ -1,6 +1,7 @@
 import {
   getStoryLive,
   allStories,
+  publishedStoriesLive,
   storyThemesLive,
   adjacentStoriesLive,
   upsertStory,
@@ -210,14 +211,20 @@ function render() {
   }
   if (route === "stories") {
     document.body.classList.remove("theme-undercover", "theme-ttt", "theme-rsm", "theme-fc", "theme-hl", "theme-cc", "theme-games");
-    if (!isStoriesUnlocked()) return renderStoriesGate(app);
-    if (parts[1] === "new") return renderStoryEditor(app, "new");
+    if (!isStoriesViewUnlocked()) return renderStoriesGate(app);
+    if (parts[1] === "new") {
+      if (!isStoriesAdmin()) return renderStoriesAdminGate(app, "#/stories/new");
+      return renderStoryEditor(app, "new");
+    }
     return renderStoriesPage(app);
   }
   if (route === "story") {
     document.body.classList.remove("theme-undercover", "theme-ttt", "theme-rsm", "theme-fc", "theme-hl", "theme-cc", "theme-games");
-    if (!isStoriesUnlocked()) return renderStoriesGate(app);
-    if (parts[2] === "edit") return renderStoryEditor(app, parts[1]);
+    if (!isStoriesViewUnlocked()) return renderStoriesGate(app);
+    if (parts[2] === "edit") {
+      if (!isStoriesAdmin()) return renderStoriesAdminGate(app, `#/story/${parts[1]}/edit`);
+      return renderStoryEditor(app, parts[1]);
+    }
     return renderStoryPage(app, parts[1]);
   }
   if (route === "games") {
@@ -449,21 +456,41 @@ function renderHome(root) {
     </main>`;
 }
 
-/* ---------- STORIES (password unlock + editor) ---------- */
-const STORIES_GATE_KEY = "funbylaia_stories_unlocked";
-const STORIES_PASSWORD = "sushiro";
+/* ---------- STORIES (reader view + admin editor) ---------- */
+const STORIES_VIEW_KEY = "funbylaia_stories_view";
+const STORIES_ADMIN_KEY = "funbylaia_stories_admin";
+const STORIES_VIEW_PASSWORD = "123";
+const STORIES_ADMIN_PASSWORD = "sushiro";
 
-function isStoriesUnlocked() {
+function isStoriesViewUnlocked() {
   try {
-    return sessionStorage.getItem(STORIES_GATE_KEY) === "1";
+    return sessionStorage.getItem(STORIES_VIEW_KEY) === "1" || isStoriesAdmin();
   } catch {
     return false;
   }
 }
 
-function unlockStories() {
+function isStoriesAdmin() {
   try {
-    sessionStorage.setItem(STORIES_GATE_KEY, "1");
+    return sessionStorage.getItem(STORIES_ADMIN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function unlockStoriesView() {
+  try {
+    sessionStorage.setItem(STORIES_VIEW_KEY, "1");
+    sessionStorage.removeItem(STORIES_ADMIN_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function unlockStoriesAdmin() {
+  try {
+    sessionStorage.setItem(STORIES_VIEW_KEY, "1");
+    sessionStorage.setItem(STORIES_ADMIN_KEY, "1");
   } catch {
     /* ignore */
   }
@@ -479,26 +506,89 @@ function renderStoriesGate(root) {
     <main class="page page-narrow stories-gate">
       <header class="section-head">
         <h1>Stories are locked for now</h1>
-        <p class="muted">Enter the password to open this corner — and to write or edit.</p>
+        <p class="muted">Choose how you want to enter.</p>
       </header>
-      <form class="stories-gate-form" data-stories-gate novalidate>
-        <label class="sr-only" for="stories-pass">Password</label>
-        <input id="stories-pass" name="password" type="password" autocomplete="current-password" placeholder="Password" required />
-        <button type="submit" class="btn btn-primary">Unlock</button>
-        <p class="stories-gate-error muted" data-gate-error hidden>Wrong password. Try again.</p>
-      </form>
+      <div class="stories-gate-choices">
+        <section class="stories-gate-choice" data-gate-panel="readers">
+          <h2>Readers view</h2>
+          <p class="muted">Browse and read stories.</p>
+          <form class="stories-gate-form" data-gate="readers" novalidate>
+            <label class="sr-only" for="stories-pass-readers">Readers password</label>
+            <input id="stories-pass-readers" name="password" type="password" autocomplete="current-password" placeholder="Password" required />
+            <button type="submit" class="btn btn-primary">Enter as reader</button>
+            <p class="stories-gate-error muted" data-gate-error hidden>Wrong password. Try again.</p>
+          </form>
+        </section>
+        <section class="stories-gate-choice" data-gate-panel="admin">
+          <h2>Admin view</h2>
+          <p class="muted">Write and edit stories.</p>
+          <form class="stories-gate-form" data-gate="admin" novalidate>
+            <label class="sr-only" for="stories-pass-admin">Admin password</label>
+            <input id="stories-pass-admin" name="password" type="password" autocomplete="current-password" placeholder="Password" required />
+            <button type="submit" class="btn btn-soft">Enter as admin</button>
+            <p class="stories-gate-error muted" data-gate-error hidden>Wrong password. Try again.</p>
+          </form>
+        </section>
+      </div>
       <p class="stories-gate-back"><a href="#/">← Back home</a></p>
     </main>`;
 
-  const form = root.querySelector("[data-stories-gate]");
+  const wireGate = (selector, expected, unlock) => {
+    const form = root.querySelector(selector);
+    const err = form?.querySelector("[data-gate-error]");
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const input = form.querySelector("input[name='password']");
+      const value = String(input?.value || "").trim();
+      if (value === expected) {
+        unlock();
+        await hydrateFromApi();
+        render();
+        return;
+      }
+      if (err) err.hidden = false;
+      if (input) {
+        input.value = "";
+        input.focus();
+      }
+    });
+  };
+
+  wireGate("[data-gate='readers']", STORIES_VIEW_PASSWORD, unlockStoriesView);
+  wireGate("[data-gate='admin']", STORIES_ADMIN_PASSWORD, unlockStoriesAdmin);
+}
+
+function renderStoriesAdminGate(root, nextHash = "#/stories") {
+  setMeta({
+    title: "Admin — fun by ayaya",
+    description: "Admin unlock for stories.",
+  });
+  root.innerHTML = `
+    ${navHTML("stories")}
+    <main class="page page-narrow stories-gate">
+      <header class="section-head">
+        <h1>Admin only</h1>
+        <p class="muted">Editing requires the admin password.</p>
+      </header>
+      <form class="stories-gate-form" data-admin-gate novalidate>
+        <label class="sr-only" for="stories-admin-pass">Admin password</label>
+        <input id="stories-admin-pass" name="password" type="password" autocomplete="current-password" placeholder="Admin password" required />
+        <button type="submit" class="btn btn-primary">Unlock editing</button>
+        <p class="stories-gate-error muted" data-gate-error hidden>Wrong password. Try again.</p>
+      </form>
+      <p class="stories-gate-back"><a href="#/stories">← Back to Stories</a></p>
+    </main>`;
+
+  const form = root.querySelector("[data-admin-gate]");
   const err = root.querySelector("[data-gate-error]");
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const input = form.querySelector("#stories-pass");
+    const input = form.querySelector("#stories-admin-pass");
     const value = String(input?.value || "").trim();
-    if (value === STORIES_PASSWORD) {
-      unlockStories();
+    if (value === STORIES_ADMIN_PASSWORD) {
+      unlockStoriesAdmin();
       await hydrateFromApi();
+      location.hash = nextHash;
       render();
       return;
     }
@@ -511,7 +601,9 @@ function renderStoriesGate(root) {
 }
 
 function filterStories() {
-  let list = allStories().sort((a, b) => (b.publishedAt || "").localeCompare(a.publishedAt || ""));
+  let list = (isStoriesAdmin() ? allStories() : publishedStoriesLive()).sort((a, b) =>
+    (b.publishedAt || "").localeCompare(a.publishedAt || "")
+  );
   const q = storyFilters.search.trim().toLowerCase();
   if (q) {
     list = list.filter(
@@ -529,11 +621,12 @@ function filterStories() {
 }
 
 function storyCardHTML(s) {
+  const admin = isStoriesAdmin();
   return `
     <article class="story-card">
       <div class="story-card-meta">
         <span class="tag">${escapeHtml(s.theme)}</span>
-        ${s.status === "draft" ? `<span class="tag">Draft</span>` : ""}
+        ${admin && s.status === "draft" ? `<span class="tag">Draft</span>` : ""}
         <span>${s.readingTime} min</span>
         ${s.publishedAt ? `<span>${escapeHtml(s.publishedAt)}</span>` : ""}
       </div>
@@ -541,7 +634,7 @@ function storyCardHTML(s) {
       <p class="muted">${escapeHtml(s.excerpt)}</p>
       <div class="story-card-actions">
         <a class="btn btn-soft tiny" href="#/story/${s.slug}">Read Story</a>
-        <a class="btn btn-ghost tiny" href="#/story/${s.slug}/edit" data-edit-story>Edit</a>
+        ${admin ? `<a class="btn btn-ghost tiny" href="#/story/${s.slug}/edit" data-edit-story>Edit</a>` : ""}
       </div>
     </article>`;
 }
@@ -551,6 +644,7 @@ function renderStoriesPage(root) {
     title: "Stories — fun by ayaya",
     description: "Stories for the moments you thought only you understood.",
   });
+  const admin = isStoriesAdmin();
   const themes = storyThemesLive();
   const list = filterStories();
   root.innerHTML = `
@@ -577,8 +671,12 @@ function renderStoriesPage(root) {
             <option value="longest" ${storyFilters.sort === "longest" ? "selected" : ""}>Longest read</option>
           </select>
           <button type="button" class="btn btn-ghost tiny" data-clear>Clear Filters</button>
-          <a class="btn btn-primary tiny" href="#/stories/new">+ New Story</a>
-          <button type="button" class="btn btn-ghost tiny" data-sync-stories>Sync to server</button>
+          ${
+            admin
+              ? `<a class="btn btn-primary tiny" href="#/stories/new">+ New Story</a>
+                 <button type="button" class="btn btn-ghost tiny" data-sync-stories>Sync to server</button>`
+              : ""
+          }
           <span class="tiny muted" aria-live="polite">${list.length} ${list.length === 1 ? "story" : "stories"}</span>
         </div>
       </div>
@@ -586,7 +684,7 @@ function renderStoriesPage(root) {
         ${
           list.length
             ? list.map(storyCardHTML).join("")
-            : `<div class="empty-state"><p>No stories match those filters. Try clearing them — or write a new one.</p></div>`
+            : `<div class="empty-state"><p>No stories match those filters. Try clearing them.</p></div>`
         }
       </div>
     </main>`;
@@ -611,7 +709,7 @@ function renderStoriesPage(root) {
   };
   $("[data-sync-stories]", root)?.addEventListener("click", async () => {
     try {
-      await pushToApi(STORIES_PASSWORD);
+      await pushToApi(STORIES_ADMIN_PASSWORD);
       showToast("Stories synced to server.");
     } catch (err) {
       showToast(err.message || "Sync failed — saved on this device only.");
@@ -621,7 +719,8 @@ function renderStoriesPage(root) {
 
 function renderStoryPage(root, slug) {
   const story = getStoryLive(slug);
-  if (!story) {
+  const canRead = story && (story.status === "published" || isStoriesAdmin());
+  if (!canRead) {
     setMeta({ title: "Story not found — fun by ayaya", description: "This story isn’t here." });
     root.innerHTML = `
       ${navHTML("stories")}
@@ -637,10 +736,11 @@ function renderStoryPage(root, slug) {
     description: story.excerpt,
   });
   const { prev, next } = adjacentStoriesLive(story.slug);
+  const admin = isStoriesAdmin();
   root.innerHTML = `
     ${navHTML("stories")}
     <article class="article-shell story-read">
-      <p class="article-kicker">${escapeHtml(story.theme)} · ${story.readingTime} min read${story.publishedAt ? ` · ${escapeHtml(story.publishedAt)}` : ""}</p>
+      <p class="article-kicker">${escapeHtml(story.theme)} · ${story.readingTime} min read${story.publishedAt ? ` · ${escapeHtml(story.publishedAt)}` : ""}${admin && story.status === "draft" ? " · Draft" : ""}</p>
       <h1>${escapeHtml(story.title)}</h1>
       ${story.subtitle ? `<p class="story-subtitle">${escapeHtml(story.subtitle)}</p>` : ""}
       <div class="prose">
@@ -650,7 +750,7 @@ function renderStoryPage(root, slug) {
         <p class="question-line">Did any part of this feel familiar?</p>
         <div class="home-cta-row" style="justify-content:flex-start;margin-top:1rem">
           <a class="btn btn-soft" href="#/stories">Read Another Story</a>
-          <a class="btn btn-ghost" href="#/story/${story.slug}/edit">Edit Story</a>
+          ${admin ? `<a class="btn btn-ghost" href="#/story/${story.slug}/edit">Edit Story</a>` : ""}
           <button type="button" class="btn btn-ghost" data-share>Share Story</button>
         </div>
       </section>
@@ -903,7 +1003,7 @@ function renderStoryEditor(root, slugOrNew) {
       draft.readingTime = estimateReadingTime(draft.content);
       const saved = upsertStory(draft);
       try {
-        await pushToApi(STORIES_PASSWORD);
+        await pushToApi(STORIES_ADMIN_PASSWORD);
         showToast("Saved & synced.");
       } catch {
         showToast("Saved on this device.");
@@ -915,7 +1015,7 @@ function renderStoryEditor(root, slugOrNew) {
       if (!confirm("Delete this story? Seed stories will hide until you clear overrides.")) return;
       deleteStory(draft.id);
       try {
-        await pushToApi(STORIES_PASSWORD);
+        await pushToApi(STORIES_ADMIN_PASSWORD);
       } catch {
         /* local only */
       }
@@ -1311,6 +1411,6 @@ if (!location.hash || location.hash === "#" || location.hash === "#/landing") {
   location.hash = "#/home";
 }
 (async () => {
-  if (isStoriesUnlocked()) await hydrateFromApi();
+  if (isStoriesViewUnlocked()) await hydrateFromApi();
   render();
 })();

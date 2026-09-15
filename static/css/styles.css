@@ -2518,6 +2518,47 @@ select:focus-visible {
   margin: 0.5rem auto 0;
 }
 
+.stories-gate-choices {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .stories-gate .page-narrow,
+  .stories-gate.page-narrow {
+    max-width: 44rem;
+  }
+
+  .stories-gate-choices {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.15rem;
+  }
+}
+
+.stories-gate-choice {
+  padding: 1.1rem 1.15rem 1.25rem;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+  text-align: left;
+}
+
+.stories-gate-choice h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+}
+
+.stories-gate-choice .muted {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.stories-gate-choice .stories-gate-form {
+  max-width: none;
+  margin-top: 0.85rem;
+}
+
 .stories-gate-form input {
   width: 100%;
   padding: 0.85rem 1rem;
