@@ -2,10 +2,11 @@ import { pickWordPair } from "./undercover-words.js";
 import { playSelamatBermain } from "./undercover-jingle.js";
 
 /**
- * Undercover — pass-and-play (Indonesia)
- * Roles: civilian (real word), impostor (impostor word, role hidden), mr_white (no word, role shown)
- * 3 players: no Mr White. 4+: 1 impostor + 1 Mr White + rest civilians.
+ * Undercover — local pass-and-play on one phone (Indonesia).
+ * Persisted in localStorage so refresh never restarts mid-game.
  */
+
+const LS_KEY = "funbylaia_undercover_v2";
 
 const ROLE = {
   CIVILIAN: "civilian",
@@ -19,20 +20,13 @@ const ROLE_LABEL = {
   mr_white: "Mr White",
 };
 
-/** @type {null | {
- *  step: string,
- *  playerCount: number,
- *  names: string[],
- *  players: Array<{ id: string, name: string, role: string, word: string | null, seen: boolean, ready: boolean, eliminated: boolean }>,
- *  realWord: string,
- *  impostorWord: string,
- *  winner: null | string,
- *  winnerLabel: string,
- *  pendingWhiteGuess: null | string,
- *  revealPlayerId: null | string,
- *  confirmElimId: null | string,
- * }} */
+const AVATAR_EMOJI = ["🕵️", "🦊", "🐱", "🐸", "🐼", "🦄", "🐯", "🐙", "🐧", "🦁", "🐰", "🐻"];
+
+/** @type {null | object} */
 let game = null;
+
+/** Pending confirm action: null | { type: 'end' | 'new' | 'elim', payload?: string } */
+let pendingConfirm = null;
 
 function esc(str) {
   return String(str)
@@ -51,8 +45,31 @@ function shuffle(arr) {
   return a;
 }
 
-function resetGame() {
-  game = {
+function initials(name) {
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function avatarFor(player, index = 0) {
+  const emoji = AVATAR_EMOJI[index % AVATAR_EMOJI.length];
+  return `<span class="uc-avatar" aria-hidden="true"><span class="uc-avatar-emoji">${emoji}</span><span class="uc-avatar-initials">${esc(initials(player?.name))}</span></span>`;
+}
+
+function normalizeGuess(s) {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function freshGame() {
+  return {
+    version: 2,
     step: "lang",
     playerCount: 3,
     names: ["", "", ""],
@@ -62,21 +79,77 @@ function resetGame() {
     winner: null,
     winnerLabel: "",
     pendingWhiteGuess: null,
-    revealPlayerId: null,
     confirmElimId: null,
+    revealIndex: 0,
+    /** pass | open | transition — never restore as open */
+    revealPhase: "pass",
+    speakingOrder: null,
+    round: 1,
+    eliminatedLog: [],
   };
 }
 
+function saveGame() {
+  if (!game) return;
+  try {
+    const snapshot = structuredClone
+      ? structuredClone(game)
+      : JSON.parse(JSON.stringify(game));
+    // Never persist an open secret card — refresh must restore hidden
+    if (snapshot.step === "reveal_card" || snapshot.revealPhase === "open") {
+      snapshot.step = "pass";
+      snapshot.revealPhase = "pass";
+    }
+    localStorage.setItem(LS_KEY, JSON.stringify(snapshot));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function clearSavedGame() {
+  try {
+    localStorage.removeItem(LS_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadGame() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== "object") return null;
+    // Never restore an open secret card
+    if (data.revealPhase === "open") data.revealPhase = "pass";
+    return { ...freshGame(), ...data, version: 2 };
+  } catch {
+    return null;
+  }
+}
+
+function resetGame() {
+  game = freshGame();
+  pendingConfirm = null;
+  clearSavedGame();
+}
+
 function ensureGame() {
-  if (!game) resetGame();
+  if (!game) {
+    game = loadGame() || freshGame();
+  }
   return game;
+}
+
+function persistAndRender(root, deps) {
+  saveGame();
+  renderUndercover(root, deps);
 }
 
 function allocateRoles(names) {
   const pair = pickWordPair();
   const n = names.length;
-  const roles = [];
-  roles.push(ROLE.IMPOSTOR);
+  const roles = [ROLE.IMPOSTOR];
   if (n >= 4) roles.push(ROLE.MR_WHITE);
   while (roles.length < n) roles.push(ROLE.CIVILIAN);
   const assigned = shuffle(roles);
@@ -94,11 +167,29 @@ function allocateRoles(names) {
         role,
         word,
         seen: false,
-        ready: false,
         eliminated: false,
       };
     }),
   };
+}
+
+/** Build circular speaking order starting from a non–Mr White player. Once only. */
+function buildSpeakingOrder() {
+  if (game.speakingOrder?.length) return game.speakingOrder;
+  const list = game.players;
+  const eligible = list.filter((p) => p.role !== ROLE.MR_WHITE);
+  const first = eligible[Math.floor(Math.random() * eligible.length)];
+  const start = list.findIndex((p) => p.id === first.id);
+  const order = [];
+  for (let i = 0; i < list.length; i++) {
+    order.push(list[(start + i) % list.length].id);
+  }
+  game.speakingOrder = order;
+  return order;
+}
+
+function playerById(id) {
+  return game.players.find((p) => p.id === id) || null;
 }
 
 function alivePlayers() {
@@ -112,16 +203,101 @@ function checkWinAfterElimination() {
 
   if (!impostorAlive) {
     game.winner = "civilians";
-    game.winnerLabel = "Civilian menang!";
+    game.winnerLabel = "🎉 Civilian menang!";
     game.step = "result";
     return;
   }
-  // Impostor wins if civilians are outnumbered or only 1 civilian left with threats
   if (civiliansAlive.length === 0 || (civiliansAlive.length === 1 && alive.length <= 2)) {
     game.winner = "impostor";
-    game.winnerLabel = "Impostor menang!";
+    game.winnerLabel = "🎉 Impostor menang!";
     game.step = "result";
   }
+}
+
+function progressStep() {
+  const s = game.step;
+  if (s === "lang" || s === "roles" || s === "setup") return 0;
+  if (s === "pass" || s === "reveal_card" || s === "hide_pass") return 1;
+  if (s === "ready_confirm") return 2;
+  if (s === "speaking_order" || s === "discuss") return 3;
+  if (s === "elim" || s === "elim_confirm" || s === "elim_reveal" || s === "white_guess") return 4;
+  if (s === "result") return 5;
+  return 0;
+}
+
+function progressHTML() {
+  const labels = ["Players", "Cards", "Ready", "Clues", "Elimination", "Result"];
+  const icons = ["👥", "🃏", "✅", "🎙️", "🗳️", "🎉"];
+  const cur = progressStep();
+  return `
+    <nav class="uc-progress" aria-label="Game progress">
+      ${labels
+        .map((label, i) => {
+          const state = i < cur ? "done" : i === cur ? "current" : "todo";
+          return `<span class="uc-progress-item is-${state}" title="${esc(label)}"><span class="uc-progress-ico">${icons[i]}</span><span class="uc-progress-label">${esc(label)}</span></span>`;
+        })
+        .join('<span class="uc-progress-sep" aria-hidden="true"></span>')}
+    </nav>`;
+}
+
+function gameChrome(extraActions = "") {
+  const inActiveGame = !["lang", "roles", "setup"].includes(game.step);
+  return `
+    <div class="uc-chrome">
+      <a class="uc-back" href="#/games/multiplayer">← Games</a>
+      <div class="uc-chrome-actions">
+        ${extraActions}
+        ${
+          inActiveGame
+            ? `<button type="button" class="btn btn-ghost tiny" data-confirm-new>New Game</button>
+               <button type="button" class="btn btn-ghost tiny" data-confirm-end>End Game</button>`
+            : ""
+        }
+      </div>
+    </div>
+    ${progressHTML()}`;
+}
+
+function confirmModalHTML() {
+  if (!pendingConfirm) return "";
+  const copy =
+    pendingConfirm.type === "end"
+      ? { title: "End this game?", body: "Saved progress will be deleted. This cannot be undone.", ok: "End Game" }
+      : pendingConfirm.type === "new"
+        ? { title: "Start a new game?", body: "Current game will be cleared and you’ll set up players again.", ok: "New Game" }
+        : {
+            title: `Eliminate ${esc(playerById(pendingConfirm.payload)?.name || "player")}?`,
+            body: "Their role will be revealed to everyone.",
+            ok: "Yes, eliminate",
+          };
+  return `
+    <div class="uc-modal uc-confirm-modal" data-confirm-modal role="dialog" aria-modal="true">
+      <div class="uc-modal-card uc-confirm-card">
+        <h2>${copy.title}</h2>
+        <p class="muted">${copy.body}</p>
+        <div class="uc-actions">
+          <button type="button" class="btn btn-primary" data-confirm-yes>${copy.ok}</button>
+          <button type="button" class="btn btn-ghost" data-confirm-no>Cancel</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function cardFaceHTML(player) {
+  if (player.role === ROLE.MR_WHITE) {
+    return `
+      <div class="uc-flip-face uc-flip-front">
+        <p class="uc-card-role">Kamu adalah</p>
+        <h2 class="uc-role-title mrwhite">Mr White</h2>
+        <p class="muted">Kamu tidak dapat kata. Dengarkan petunjuk, lalu tebak.</p>
+      </div>`;
+  }
+  return `
+    <div class="uc-flip-face uc-flip-front">
+      <p class="uc-card-role">Kata kamu</p>
+      <h2 class="uc-word">${esc(player.word)}</h2>
+      <p class="muted">Jangan bilang kata ini langsung. Beri petunjuk yang cukup samar.</p>
+    </div>`;
 }
 
 /**
@@ -129,7 +305,7 @@ function checkWinAfterElimination() {
  * @param {{ navHTML: Function, setMeta: Function, showToast: Function }} deps
  */
 export function renderUndercover(root, deps) {
-  const { navHTML, setMeta, showToast } = deps;
+  const { navHTML, setMeta } = deps;
   ensureGame();
   setMeta({
     title: "Undercover · fun by ayaya",
@@ -141,18 +317,20 @@ export function renderUndercover(root, deps) {
       ${navHTML("games")}
       <main class="page undercover-page undercover-ops">
         <div class="uc-ops-bg" aria-hidden="true"></div>
-        <a class="uc-back" href="#/games/multiplayer">← Abort to Games</a>
-        ${body}
+        ${gameChrome()}
+        <div class="uc-stage uc-fade-in">${body}</div>
+        ${confirmModalHTML()}
       </main>`;
     wire(root, deps);
   };
 
+  /* ---------- LANG ---------- */
   if (game.step === "lang") {
     shell(`
       <header class="uc-head">
-        <p class="uc-kicker">FILE // UNDERCOVER</p>
-        <h1>SELECT LANGUAGE</h1>
-        <p class="muted uc-mono">Choose protocol before briefing begins.</p>
+        <p class="uc-kicker">🕵️ UNDERCOVER</p>
+        <h1>Select Language</h1>
+        <p class="muted">One phone. Pass it around. No accounts needed.</p>
       </header>
       <div class="uc-lang-grid">
         <button type="button" class="uc-lang-card is-ready" data-lang="id">
@@ -169,10 +347,11 @@ export function renderUndercover(root, deps) {
     return;
   }
 
+  /* ---------- ROLES ---------- */
   if (game.step === "roles") {
     shell(`
       <header class="uc-head">
-        <p class="uc-kicker">Undercover</p>
+        <p class="uc-kicker">👥 Briefing</p>
         <h1>Tiga peran</h1>
         <p class="muted">Pahami dulu sebelum mulai.</p>
       </header>
@@ -191,20 +370,22 @@ export function renderUndercover(root, deps) {
         </article>
       </div>
       <p class="tiny muted uc-note">3 pemain: tanpa Mr White. 4+ pemain: 1 Impostor + 1 Mr White.</p>
-      <button type="button" class="btn btn-primary" data-to-setup>Lanjut →</button>`);
+      <button type="button" class="btn btn-primary uc-cta" data-to-setup>Lanjut →</button>`);
     return;
   }
 
+  /* ---------- SETUP ---------- */
   if (game.step === "setup") {
     const inputs = Array.from({ length: game.playerCount }, (_, i) => `
       <label class="uc-name-field">
-        <span>Pemain ${i + 1}</span>
+        <span class="uc-name-label">${AVATAR_EMOJI[i % AVATAR_EMOJI.length]} Pemain ${i + 1}</span>
         <input type="text" maxlength="24" data-name-i="${i}" value="${esc(game.names[i] || "")}" placeholder="Nama…" autocomplete="off" />
       </label>`).join("");
     shell(`
       <header class="uc-head">
+        <p class="uc-kicker">👥 Add Players</p>
         <h1>Setup pemain</h1>
-        <p class="muted">Minimal 3 orang. Giliran pakai satu HP.</p>
+        <p class="muted">Minimal 3 orang. Satu HP digilir.</p>
       </header>
       <div class="uc-count">
         <span>Jumlah pemain</span>
@@ -216,102 +397,222 @@ export function renderUndercover(root, deps) {
       </div>
       <form class="uc-names" data-names-form>
         ${inputs}
-        <button type="submit" class="btn btn-primary">Simpan & mulai alokasi</button>
+        <button type="submit" class="btn btn-primary uc-cta">Mulai & bagikan kartu 🃏</button>
       </form>`);
     return;
   }
 
-  if (game.step === "reveal") {
-    const list = game.players
-      .map((p) => {
-        let status = "Ketuk untuk buka kartu";
-        let action = "open";
-        if (p.seen && !p.ready) {
-          status = "Sudah lihat · ketuk Ready";
-          action = "ready";
-        }
-        if (p.ready) {
-          status = "Ready ✓";
-          action = "";
-        }
-        return `
-        <button type="button" class="uc-player-btn ${p.ready ? "is-ready" : ""} ${p.seen ? "is-seen" : ""}"
-          ${p.ready ? "disabled" : ""}
-          data-action="${action}" data-pid="${p.id}">
-          <strong>${esc(p.name)}</strong>
-          <span>${status}</span>
-        </button>`;
-      })
-      .join("");
-    const allReady = game.players.every((p) => p.ready);
+  /* ---------- PASS PHONE ---------- */
+  if (game.step === "pass") {
+    const player = game.players[game.revealIndex];
+    if (!player) {
+      game.step = "ready_confirm";
+      persistAndRender(root, deps);
+      return;
+    }
+    shell(`
+      <header class="uc-head uc-pass-head">
+        <p class="uc-kicker">📱 Pass the Phone</p>
+        <div class="uc-pass-hero">
+          ${avatarFor(player, game.revealIndex)}
+          <h1>Pass the phone to<br/><span class="uc-glow-name">${esc(player.name)}</span></h1>
+        </div>
+        <p class="uc-warn">Make sure nobody else is looking 👀</p>
+        <p class="tiny muted">${game.revealIndex + 1} / ${game.players.length}</p>
+      </header>
+      <button type="button" class="btn btn-primary uc-cta uc-cta-xl" data-reveal-card>Reveal My Card 🃏</button>`);
+    return;
+  }
+
+  /* ---------- REVEAL CARD (flip) ---------- */
+  if (game.step === "reveal_card") {
+    const player = game.players[game.revealIndex];
+    if (!player) {
+      game.step = "ready_confirm";
+      persistAndRender(root, deps);
+      return;
+    }
     shell(`
       <header class="uc-head">
-        <h1>Buka kartu giliran</h1>
-        <p class="muted">Giliran satu orang. Kartu hanya sekali. Tutup dulu, baru Ready.</p>
+        <p class="uc-kicker">🃏 Reveal Card</p>
+        <h1>${esc(player.name)}</h1>
+        <p class="muted">Hanya kamu yang boleh melihat.</p>
       </header>
-      <div class="uc-player-list">${list}</div>
-      ${
-        allReady
-          ? `<button type="button" class="btn btn-primary" data-to-play>Semua ready · mulai main</button>`
-          : `<p class="tiny muted">Menunggu semua pemain ready…</p>`
-      }
-      <div class="uc-modal" data-modal hidden>
-        <div class="uc-modal-card" role="dialog" aria-modal="true">
-          <div data-modal-body></div>
-          <button type="button" class="btn btn-soft" data-close-card>Tutup kartu</button>
+      <div class="uc-flip-scene is-flipped" data-flip>
+        <div class="uc-flip-card">
+          <div class="uc-flip-face uc-flip-back">
+            <span class="uc-card-back-mark">?</span>
+            <p>Secret card</p>
+          </div>
+          ${cardFaceHTML(player)}
         </div>
+      </div>
+      <button type="button" class="btn btn-soft uc-cta uc-cta-xl" data-hide-card>Hide Card & Pass the Phone 🙈</button>`);
+    return;
+  }
+
+  /* ---------- NEUTRAL TRANSITION ---------- */
+  if (game.step === "hide_pass") {
+    const next = game.players[game.revealIndex];
+    const done = !next || game.players.every((p) => p.seen);
+    shell(`
+      <header class="uc-head">
+        <p class="uc-kicker">📱 Pass the Phone</p>
+        <h1>${done ? "Semua kartu sudah dilihat" : "Kartu tersembunyi"}</h1>
+        <p class="muted">${done ? "Siap lanjut ke langkah berikutnya." : "Serahkan HP ke pemain berikutnya. Jangan intip!"}</p>
+      </header>
+      <div class="uc-neutral-pulse" aria-hidden="true"></div>
+      <button type="button" class="btn btn-primary uc-cta uc-cta-xl" data-next-pass>
+        ${done ? "Lanjut ✅" : `Lanjut ke ${esc(next.name)} →`}
+      </button>`);
+    return;
+  }
+
+  /* ---------- READY CONFIRM ---------- */
+  if (game.step === "ready_confirm") {
+    shell(`
+      <header class="uc-head">
+        <p class="uc-kicker">✅ Ready to Play</p>
+        <h1>Everyone Has Seen Their Card!</h1>
+        <p class="muted">Pass the phone back to the group and make sure everyone is ready.</p>
+      </header>
+      <div class="uc-ready-badge" aria-hidden="true">✅</div>
+      <button type="button" class="btn btn-primary uc-cta uc-cta-xl" data-ready-play>Ready to Play 🎮</button>`);
+    return;
+  }
+
+  /* ---------- SPEAKING ORDER ---------- */
+  if (game.step === "speaking_order") {
+    const order = buildSpeakingOrder();
+    saveGame();
+    const first = playerById(order[0]);
+    const timeline = order
+      .map((id, i) => {
+        const p = playerById(id);
+        const idx = game.players.findIndex((x) => x.id === id);
+        return `
+          <li class="uc-order-item ${i === 0 ? "is-first" : ""}">
+            <span class="uc-order-num">${i + 1}</span>
+            ${avatarFor(p, idx)}
+            <strong>${esc(p?.name || "")}</strong>
+            ${i === 0 ? `<span class="uc-order-tag">First</span>` : ""}
+          </li>`;
+      })
+      .join("");
+    shell(`
+      <header class="uc-head">
+        <p class="uc-kicker">🎙️ Give Your Clue</p>
+        <h1>Time to Give Your Clues!</h1>
+        <p class="uc-first-line"><span class="uc-glow-name">${esc(first?.name || "")}</span> goes first!</p>
+      </header>
+      <ol class="uc-order-list">${timeline}</ol>
+      <p class="uc-clue-tip">“Berikan satu clue tanpa menyebutkan kata rahasianya. Jangan terlalu jelas, tetapi jangan terlalu mencurigakan!”</p>
+      <button type="button" class="btn btn-primary uc-cta uc-cta-xl" data-start-discuss>Start Discussion 💬</button>`);
+    return;
+  }
+
+  /* ---------- DISCUSSION ---------- */
+  if (game.step === "discuss") {
+    const order = game.speakingOrder || buildSpeakingOrder();
+    const aliveIds = new Set(alivePlayers().map((p) => p.id));
+    const timeline = order
+      .map((id, i) => {
+        const p = playerById(id);
+        const idx = game.players.findIndex((x) => x.id === id);
+        const out = p?.eliminated;
+        return `
+          <li class="uc-order-item ${i === 0 && game.round === 1 ? "is-first" : ""} ${out ? "is-out" : ""} ${!out && aliveIds.has(id) ? "is-alive" : ""}">
+            <span class="uc-order-num">${i + 1}</span>
+            ${avatarFor(p, idx)}
+            <strong>${esc(p?.name || "")}</strong>
+            ${out ? `<span class="uc-order-tag out">Out</span>` : ""}
+          </li>`;
+      })
+      .join("");
+    shell(`
+      <header class="uc-head">
+        <p class="uc-kicker">💬 Discussion · Round ${game.round}</p>
+        <h1>Diskusi berlangsung</h1>
+        <p class="muted">Ikuti urutan clue di bawah. Tidak perlu tekan apa-apa tiap giliran — mainkan secara langsung.</p>
+      </header>
+      <ol class="uc-order-list">${timeline}</ol>
+      <button type="button" class="btn btn-primary uc-cta uc-cta-xl" data-to-elim>Continue to Elimination 🗳️</button>`);
+    return;
+  }
+
+  /* ---------- WHITE GUESS ---------- */
+  if (game.step === "white_guess" || (game.step === "elim" && game.pendingWhiteGuess)) {
+    const p = playerById(game.pendingWhiteGuess);
+    shell(`
+      <header class="uc-head">
+        <p class="uc-kicker">🔍 Mr White</p>
+        <h1>Mr White tersingkir!</h1>
+        <p class="muted">${esc(p?.name || "Mr White")} boleh menebak kata Civilian (satu kesempatan).</p>
+      </header>
+      <form class="uc-guess" data-white-guess>
+        <label>
+          <span>Tebakan kata</span>
+          <input type="text" name="guess" autocomplete="off" required placeholder="Ketik kata…" />
+        </label>
+        <button type="submit" class="btn btn-primary uc-cta">Tebak</button>
+      </form>`);
+    return;
+  }
+
+  /* ---------- ELIM CONFIRM ---------- */
+  if (game.step === "elim_confirm" && game.confirmElimId) {
+    const p = playerById(game.confirmElimId);
+    shell(`
+      <header class="uc-head">
+        <p class="uc-kicker">🗳️ Elimination</p>
+        <h1>Eliminate ${esc(p?.name || "")}?</h1>
+        <p class="muted">Role akan dibuka setelah konfirmasi.</p>
+      </header>
+      <div class="uc-actions">
+        <button type="button" class="btn btn-primary uc-cta" data-confirm-elim>Ya, eliminasi</button>
+        <button type="button" class="btn btn-ghost" data-cancel-elim>Batal</button>
       </div>`);
     return;
   }
 
-  if (game.step === "play") {
-    if (game.pendingWhiteGuess) {
-      const p = game.players.find((x) => x.id === game.pendingWhiteGuess);
-      shell(`
-        <header class="uc-head">
-          <h1>Mr White tersingkir!</h1>
-          <p class="muted">${esc(p?.name || "Mr White")} boleh menebak kata Civilian.</p>
-        </header>
-        <form class="uc-guess" data-white-guess>
-          <label>
-            <span>Tebakan kata</span>
-            <input type="text" name="guess" autocomplete="off" required placeholder="Ketik kata…" />
-          </label>
-          <button type="submit" class="btn btn-primary">Tebak</button>
-        </form>`);
-      return;
-    }
+  /* ---------- ELIM REVEAL ---------- */
+  if (game.step === "elim_reveal") {
+    const last = game.eliminatedLog[game.eliminatedLog.length - 1];
+    const p = last ? playerById(last.id) : null;
+    shell(`
+      <header class="uc-head">
+        <p class="uc-kicker">🔍 Reveal Role</p>
+        <h1>${esc(p?.name || "")}</h1>
+      </header>
+      <div class="uc-role-reveal uc-pop">
+        <p class="muted">adalah</p>
+        <h2 class="uc-role-title ${p?.role || ""}">${ROLE_LABEL[p?.role] || "?"}</h2>
+      </div>
+      <button type="button" class="btn btn-primary uc-cta" data-after-reveal>Lanjut</button>`);
+    return;
+  }
 
-    if (game.confirmElimId) {
-      const p = game.players.find((x) => x.id === game.confirmElimId);
-      shell(`
-        <header class="uc-head">
-          <h1>Eliminasi ${esc(p?.name || "")}?</h1>
-          <p class="muted">Role akan dibuka setelah ini.</p>
-        </header>
-        <div class="uc-actions">
-          <button type="button" class="btn btn-primary" data-confirm-elim>Ya, eliminasi</button>
-          <button type="button" class="btn btn-ghost" data-cancel-elim>Batal</button>
-        </div>`);
-      return;
-    }
-
+  /* ---------- ELIMINATION ---------- */
+  if (game.step === "elim") {
     const alive = alivePlayers();
     const out = game.players.filter((p) => p.eliminated);
     shell(`
       <header class="uc-head">
-        <h1>Eliminasi</h1>
-        <p class="muted">Diskusi dulu, lalu pilih siapa yang keluar.</p>
+        <p class="uc-kicker">🗳️ Elimination · Round ${game.round}</p>
+        <h1>Pilih yang dieliminasi</h1>
+        <p class="muted">Diskusi selesai — siapa yang keluar?</p>
       </header>
-      <div class="uc-player-list">
+      <div class="uc-player-grid">
         ${alive
-          .map(
-            (p) => `
-          <button type="button" class="uc-player-btn danger" data-elim="${p.id}">
-            <strong>${esc(p.name)}</strong>
-            <span>Eliminasi</span>
-          </button>`
-          )
+          .map((p, i) => {
+            const idx = game.players.findIndex((x) => x.id === p.id);
+            return `
+            <button type="button" class="uc-player-card" data-elim="${p.id}">
+              ${avatarFor(p, idx >= 0 ? idx : i)}
+              <strong>${esc(p.name)}</strong>
+              <span>Eliminate</span>
+            </button>`;
+          })
           .join("")}
       </div>
       ${
@@ -327,53 +628,53 @@ export function renderUndercover(root, deps) {
     return;
   }
 
+  /* ---------- RESULT ---------- */
   if (game.step === "result") {
     shell(`
       <header class="uc-head">
+        <p class="uc-kicker">🎉 Winner</p>
         <h1>${esc(game.winnerLabel)}</h1>
         <p class="muted">Kata Civilian: <strong>${esc(game.realWord)}</strong> · Impostor: <strong>${esc(game.impostorWord)}</strong></p>
       </header>
       <ul class="uc-reveal-all">
         ${game.players
-          .map(
-            (p) =>
-              `<li><strong>${esc(p.name)}</strong> · ${ROLE_LABEL[p.role]}${p.word ? ` (${esc(p.word)})` : ""}</li>`
-          )
+          .map((p, i) => {
+            return `<li>${avatarFor(p, i)}<div><strong>${esc(p.name)}</strong><span>${ROLE_LABEL[p.role]}${p.word ? ` · ${esc(p.word)}` : ""}</span></div></li>`;
+          })
           .join("")}
       </ul>
       <div class="uc-actions">
-        <button type="button" class="btn btn-primary" data-again>Main lagi</button>
+        <button type="button" class="btn btn-primary uc-cta" data-again>Main lagi</button>
+        <button type="button" class="btn btn-ghost" data-confirm-end>End Game</button>
         <a class="btn btn-ghost" href="#/games/multiplayer">Keluar</a>
       </div>`);
+    return;
   }
-}
 
-function cardBodyFor(player) {
-  if (player.role === ROLE.MR_WHITE) {
-    return `
-      <p class="uc-card-role">Kamu adalah</p>
-      <h2>Mr White</h2>
-      <p class="muted">Kamu tidak dapat kata. Dengarkan petunjuk orang lain, lalu tebak.</p>`;
-  }
-  // Impostor & civilian: word only, no role label
-  return `
-    <p class="uc-card-role">Kata kamu</p>
-    <h2 class="uc-word">${esc(player.word)}</h2>
-    <p class="muted">Jangan bilang kata ini langsung. Beri petunjuk.</p>`;
+  // Fallback — unknown/corrupt step
+  game.step = "setup";
+  shell(`
+    <header class="uc-head">
+      <h1>Undercover</h1>
+      <p class="muted">Lanjut setup pemain.</p>
+    </header>
+    <button type="button" class="btn btn-primary uc-cta" data-to-setup>Setup pemain</button>`);
 }
 
 function wire(root, deps) {
   const { showToast } = deps;
 
+  const go = () => persistAndRender(root, deps);
+
   root.querySelector("[data-lang=id]")?.addEventListener("click", () => {
     playSelamatBermain();
     game.step = "roles";
-    renderUndercover(root, deps);
+    go();
   });
 
   root.querySelector("[data-to-setup]")?.addEventListener("click", () => {
     game.step = "setup";
-    renderUndercover(root, deps);
+    go();
   });
 
   root.querySelector("[data-minus]")?.addEventListener("click", () => {
@@ -383,7 +684,7 @@ function wire(root, deps) {
     }
     game.playerCount -= 1;
     game.names = game.names.slice(0, game.playerCount);
-    renderUndercover(root, deps);
+    go();
   });
 
   root.querySelector("[data-plus]")?.addEventListener("click", () => {
@@ -393,7 +694,7 @@ function wire(root, deps) {
     }
     game.playerCount += 1;
     game.names.push("");
-    renderUndercover(root, deps);
+    go();
   });
 
   root.querySelector("[data-names-form]")?.addEventListener("submit", (e) => {
@@ -419,96 +720,136 @@ function wire(root, deps) {
     game.realWord = alloc.realWord;
     game.impostorWord = alloc.impostorWord;
     game.players = alloc.players;
-    game.step = "reveal";
-    showToast("Peran dialokasikan secara acak.");
-    renderUndercover(root, deps);
+    game.revealIndex = 0;
+    game.revealPhase = "pass";
+    game.speakingOrder = null;
+    game.round = 1;
+    game.eliminatedLog = [];
+    game.winner = null;
+    game.winnerLabel = "";
+    game.pendingWhiteGuess = null;
+    game.confirmElimId = null;
+    game.step = "pass";
+    showToast("Peran dialokasikan. Mulai giliran kartu.");
+    go();
   });
 
-  root.querySelectorAll("[data-action]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-pid");
-      const action = btn.getAttribute("data-action");
-      const player = game.players.find((p) => p.id === id);
-      if (!player || player.ready) return;
-
-      if (action === "ready") {
-        if (!player.seen) return;
-        player.ready = true;
-        renderUndercover(root, deps);
-        return;
-      }
-
-      if (action === "open") {
-        if (player.seen) return;
-        const modal = root.querySelector("[data-modal]");
-        const body = root.querySelector("[data-modal-body]");
-        if (!modal || !body) return;
-        body.innerHTML = cardBodyFor(player);
-        modal.hidden = false;
-        game.revealPlayerId = id;
-        player.seen = true;
-      }
-    });
+  root.querySelector("[data-reveal-card]")?.addEventListener("click", () => {
+    const player = game.players[game.revealIndex];
+    if (!player) return;
+    player.seen = true;
+    game.revealPhase = "open";
+    game.step = "reveal_card";
+    go();
   });
 
-  root.querySelector("[data-close-card]")?.addEventListener("click", () => {
-    const modal = root.querySelector("[data-modal]");
-    if (modal) modal.hidden = true;
-    game.revealPlayerId = null;
-    renderUndercover(root, deps);
+  root.querySelector("[data-hide-card]")?.addEventListener("click", () => {
+    game.revealPhase = "transition";
+    game.revealIndex += 1;
+    if (game.revealIndex >= game.players.length) {
+      game.step = "ready_confirm";
+      game.revealPhase = "pass";
+    } else {
+      game.step = "hide_pass";
+    }
+    go();
   });
 
-  root.querySelector("[data-to-play]")?.addEventListener("click", () => {
-    game.step = "play";
-    renderUndercover(root, deps);
+  root.querySelector("[data-next-pass]")?.addEventListener("click", () => {
+    if (game.players.every((p) => p.seen) && game.revealIndex >= game.players.length) {
+      game.step = "ready_confirm";
+    } else {
+      game.step = "pass";
+      game.revealPhase = "pass";
+    }
+    go();
+  });
+
+  root.querySelector("[data-ready-play]")?.addEventListener("click", () => {
+    buildSpeakingOrder();
+    game.step = "speaking_order";
+    go();
+  });
+
+  root.querySelector("[data-start-discuss]")?.addEventListener("click", () => {
+    game.step = "discuss";
+    go();
+  });
+
+  root.querySelector("[data-to-elim]")?.addEventListener("click", () => {
+    game.step = "elim";
+    game.confirmElimId = null;
+    go();
   });
 
   root.querySelectorAll("[data-elim]").forEach((btn) => {
     btn.addEventListener("click", () => {
       game.confirmElimId = btn.getAttribute("data-elim");
-      renderUndercover(root, deps);
+      game.step = "elim_confirm";
+      go();
     });
   });
 
   root.querySelector("[data-cancel-elim]")?.addEventListener("click", () => {
     game.confirmElimId = null;
-    renderUndercover(root, deps);
+    game.step = "elim";
+    go();
   });
 
   root.querySelector("[data-confirm-elim]")?.addEventListener("click", () => {
     const id = game.confirmElimId;
     game.confirmElimId = null;
-    const player = game.players.find((p) => p.id === id);
-    if (!player || player.eliminated) return;
-    player.eliminated = true;
-    if (player.role === ROLE.MR_WHITE) {
-      game.pendingWhiteGuess = player.id;
-      showToast(`${player.name} adalah Mr White!`);
-      renderUndercover(root, deps);
+    const player = playerById(id);
+    if (!player || player.eliminated) {
+      game.step = "elim";
+      go();
       return;
     }
-    showToast(`${player.name} adalah ${ROLE_LABEL[player.role]}.`);
+    player.eliminated = true;
+    game.eliminatedLog.push({ id: player.id, role: player.role, round: game.round });
+    game.step = "elim_reveal";
+    go();
+  });
+
+  root.querySelector("[data-after-reveal]")?.addEventListener("click", () => {
+    const last = game.eliminatedLog[game.eliminatedLog.length - 1];
+    const player = last ? playerById(last.id) : null;
+    if (player?.role === ROLE.MR_WHITE) {
+      game.pendingWhiteGuess = player.id;
+      game.step = "white_guess";
+      go();
+      return;
+    }
     checkWinAfterElimination();
-    renderUndercover(root, deps);
+    if (game.step === "result") {
+      go();
+      return;
+    }
+    game.round += 1;
+    game.step = "discuss";
+    go();
   });
 
   root.querySelector("[data-white-guess]")?.addEventListener("submit", (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const guess = String(fd.get("guess") || "").trim().toLowerCase();
-    const answer = game.realWord.trim().toLowerCase();
+    const guess = normalizeGuess(fd.get("guess"));
+    const answer = normalizeGuess(game.realWord);
     game.pendingWhiteGuess = null;
-    if (guess === answer) {
+    if (guess && guess === answer) {
       game.winner = "mr_white";
-      game.winnerLabel = "Mr White menang!";
+      game.winnerLabel = "🎉 Mr White menang!";
       game.step = "result";
       showToast("Tebakan benar!");
     } else {
       showToast("Salah. Mr White gagal.");
       checkWinAfterElimination();
-      if (game.step !== "result") game.step = "play";
+      if (game.step !== "result") {
+        game.round += 1;
+        game.step = "discuss";
+      }
     }
-    renderUndercover(root, deps);
+    go();
   });
 
   root.querySelector("[data-again]")?.addEventListener("click", () => {
@@ -518,10 +859,62 @@ function wire(root, deps) {
     game.step = "setup";
     game.playerCount = count;
     game.names = names;
+    saveGame();
+    renderUndercover(root, deps);
+  });
+
+  root.querySelectorAll("[data-confirm-end]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      pendingConfirm = { type: "end" };
+      renderUndercover(root, deps);
+    });
+  });
+
+  root.querySelectorAll("[data-confirm-new]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      pendingConfirm = { type: "new" };
+      renderUndercover(root, deps);
+    });
+  });
+
+  root.querySelector("[data-confirm-no]")?.addEventListener("click", () => {
+    pendingConfirm = null;
+    renderUndercover(root, deps);
+  });
+
+  root.querySelector("[data-confirm-yes]")?.addEventListener("click", () => {
+    const type = pendingConfirm?.type;
+    pendingConfirm = null;
+    if (type === "end") {
+      resetGame();
+      location.hash = "#/games/multiplayer";
+      return;
+    }
+    if (type === "new") {
+      resetGame();
+      game.step = "setup";
+      saveGame();
+      renderUndercover(root, deps);
+      return;
+    }
     renderUndercover(root, deps);
   });
 }
 
+/** Enter Undercover without wiping a saved in-progress game. */
 export function startUndercover() {
+  const saved = loadGame();
+  if (saved && saved.players?.length && !["lang", "roles", "setup"].includes(saved.step)) {
+    game = saved;
+    if (game.revealPhase === "open") {
+      game.revealPhase = "pass";
+      game.step = "pass";
+    }
+    return;
+  }
+  if (saved && ["lang", "roles", "setup"].includes(saved.step)) {
+    game = saved;
+    return;
+  }
   resetGame();
 }
