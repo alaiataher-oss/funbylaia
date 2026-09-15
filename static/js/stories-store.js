@@ -20,6 +20,9 @@ export function normalizeBlock(block) {
   if (typeof block === "string") return { type: "p", text: block };
   if (!block || typeof block !== "object") return { type: "p", text: "" };
   const type = block.type || "p";
+  if (type === "html") {
+    return { type: "html", html: String(block.html || "") };
+  }
   if (type === "img") {
     return { type: "img", url: String(block.url || "").trim(), alt: String(block.alt || "").trim() };
   }
@@ -34,17 +37,102 @@ export function normalizeBlock(block) {
 }
 
 export function normalizeContent(content) {
+  if (typeof content === "string") return [{ type: "html", html: content }];
   if (!Array.isArray(content)) return [];
   return content.map(normalizeBlock);
 }
 
-export function estimateReadingTime(content) {
+export function htmlToPlainText(html) {
+  const tmp = document.createElement("div");
+  tmp.innerHTML = String(html || "");
+  return (tmp.textContent || tmp.innerText || "").replace(/\s+/g, " ").trim();
+}
+
+/** Convert legacy blocks or html content into editor/display HTML. */
+export function contentToHtml(content) {
+  if (typeof content === "string") return content;
   const blocks = normalizeContent(content);
-  const words = blocks.reduce((n, b) => {
-    if (b.type === "p") return n + b.text.split(/\s+/).filter(Boolean).length;
-    if (b.type === "a") return n + b.label.split(/\s+/).filter(Boolean).length;
-    return n + 12; // image glance
-  }, 0);
+  if (!blocks.length) return "<p></p>";
+  if (blocks.length === 1 && blocks[0].type === "html") {
+    return blocks[0].html || "<p></p>";
+  }
+  return blocks
+    .map((b) => {
+      if (b.type === "html") return b.html || "";
+      if (b.type === "img" && b.url) {
+        return `<figure class="story-figure"><img src="${escapeHtml(b.url)}" alt="${escapeHtml(b.alt || "")}" /><figcaption>${escapeHtml(b.alt || "")}</figcaption></figure>`;
+      }
+      if (b.type === "a" && b.href) {
+        return `<p><a href="${escapeHtml(b.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(b.label || b.href)}</a></p>`;
+      }
+      const text = String(b.text || "");
+      if (!text.trim()) return "<p><br></p>";
+      return `<p>${renderInlineText(text)}</p>`;
+    })
+    .join("");
+}
+
+/** Allow only safe formatting tags from the rich editor. */
+export function sanitizeStoryHtml(html) {
+  const tmp = document.createElement("div");
+  tmp.innerHTML = String(html || "");
+  const allowed = new Set(["P", "BR", "STRONG", "B", "EM", "I", "U", "SPAN", "A", "IMG", "FIGURE", "FIGCAPTION", "DIV", "UL", "OL", "LI", "H1", "H2", "H3", "FONT"]);
+  const walk = (node) => {
+    [...node.childNodes].forEach((child) => {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        if (child.tagName === "FONT") {
+          const span = document.createElement("span");
+          const sizeMap = { 1: "10px", 2: "13px", 3: "16px", 4: "18px", 5: "24px", 6: "32px", 7: "48px" };
+          const sz = child.getAttribute("size");
+          if (sz && sizeMap[sz]) span.style.fontSize = sizeMap[sz];
+          while (child.firstChild) span.appendChild(child.firstChild);
+          child.replaceWith(span);
+          walk(span);
+          return;
+        }
+        if (!allowed.has(child.tagName)) {
+          const parent = child.parentNode;
+          while (child.firstChild) parent.insertBefore(child.firstChild, child);
+          parent.removeChild(child);
+          return;
+        }
+        [...child.attributes].forEach((attr) => {
+          const name = attr.name.toLowerCase();
+          if (child.tagName === "A" && (name === "href" || name === "target" || name === "rel")) {
+            if (name === "href" && !/^(https?:|mailto:|#)/i.test(attr.value)) child.removeAttribute(attr.name);
+            return;
+          }
+          if (child.tagName === "IMG" && (name === "src" || name === "alt" || name === "loading")) {
+            if (name === "src" && !/^https?:\/\//i.test(attr.value)) child.removeAttribute(attr.name);
+            return;
+          }
+          if (name === "style" && child.tagName === "SPAN") {
+            const size = String(attr.value).match(/font-size\s*:\s*([\d.]+px)/i);
+            child.removeAttribute("style");
+            if (size) child.style.fontSize = size[1];
+            return;
+          }
+          if (name === "class" && (child.tagName === "FIGURE" || child.tagName === "IMG")) return;
+          child.removeAttribute(attr.name);
+        });
+        if (child.tagName === "A") {
+          child.setAttribute("target", "_blank");
+          child.setAttribute("rel", "noopener noreferrer");
+        }
+        walk(child);
+      } else if (child.nodeType === Node.COMMENT_NODE) {
+        child.remove();
+      }
+    });
+  };
+  walk(tmp);
+  const out = tmp.innerHTML.trim();
+  return out || "<p></p>";
+}
+
+export function estimateReadingTime(content) {
+  const html = contentToHtml(content);
+  const words = htmlToPlainText(html).split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.round(words / 220));
 }
 
@@ -81,12 +169,13 @@ function normalizeStory(s, { fromSeed = false } = {}) {
   const id = s.id || s.slug || slugify(s.title);
   const slug = s.slug || slugify(s.title);
   const content = normalizeContent(s.content || []);
+  const plain = htmlToPlainText(contentToHtml(content));
   return {
     id,
     slug,
     title: s.title || "Untitled",
     subtitle: s.subtitle || "",
-    excerpt: s.excerpt || (content.find((b) => b.type === "p")?.text || "").slice(0, 180),
+    excerpt: s.excerpt || plain.slice(0, 180),
     theme: s.theme || "Things I’m Still Learning",
     readingTime: s.readingTime || estimateReadingTime(content),
     publishedAt: s.publishedAt || new Date().toISOString().slice(0, 10),
@@ -187,7 +276,7 @@ export function blankStory() {
     publishedAt: today,
     status: "published",
     featured: false,
-    content: [{ type: "p", text: "" }],
+    content: [{ type: "html", html: "<p></p>" }],
   });
 }
 
@@ -209,7 +298,11 @@ export function renderInlineText(text) {
 }
 
 export function renderContentBlocks(content) {
-  return normalizeContent(content)
+  const blocks = normalizeContent(content);
+  if (blocks.some((b) => b.type === "html")) {
+    return sanitizeStoryHtml(contentToHtml(blocks));
+  }
+  return blocks
     .map((b) => {
       if (b.type === "img" && b.url) {
         return `<figure class="story-figure"><img src="${escapeHtml(b.url)}" alt="${escapeHtml(b.alt || "")}" loading="lazy" /><figcaption>${escapeHtml(b.alt || "")}</figcaption></figure>`;

@@ -8,9 +8,11 @@ import {
   deleteStory,
   blankStory,
   renderContentBlocks,
+  contentToHtml,
+  sanitizeStoryHtml,
+  htmlToPlainText,
   hydrateFromApi,
   pushToApi,
-  normalizeContent,
   estimateReadingTime,
 } from "./stories-store.js";
 import { renderUndercover, startUndercover } from "./undercover.js";
@@ -776,77 +778,6 @@ function renderStoryPage(root, slug) {
   });
 }
 
-function blockEditorHTML(block, index) {
-  const type = block.type || "p";
-  if (type === "img") {
-    return `
-      <div class="story-block" data-block-index="${index}" data-block-type="img">
-        <div class="story-block-head">
-          <span class="tag">Image</span>
-          <button type="button" class="btn btn-ghost tiny" data-block-up ${index === 0 ? "disabled" : ""}>↑</button>
-          <button type="button" class="btn btn-ghost tiny" data-block-down>↓</button>
-          <button type="button" class="btn btn-ghost tiny" data-block-remove>Remove</button>
-        </div>
-        <label>Image URL
-          <input type="url" data-field="url" value="${escapeHtml(block.url || "")}" placeholder="https://…" />
-        </label>
-        <label>Alt / caption
-          <input type="text" data-field="alt" value="${escapeHtml(block.alt || "")}" placeholder="Short description" />
-        </label>
-        ${block.url ? `<img class="story-edit-preview" src="${escapeHtml(block.url)}" alt="" />` : ""}
-      </div>`;
-  }
-  if (type === "a") {
-    return `
-      <div class="story-block" data-block-index="${index}" data-block-type="a">
-        <div class="story-block-head">
-          <span class="tag">Link</span>
-          <button type="button" class="btn btn-ghost tiny" data-block-up ${index === 0 ? "disabled" : ""}>↑</button>
-          <button type="button" class="btn btn-ghost tiny" data-block-down>↓</button>
-          <button type="button" class="btn btn-ghost tiny" data-block-remove>Remove</button>
-        </div>
-        <label>URL
-          <input type="url" data-field="href" value="${escapeHtml(block.href || "")}" placeholder="https://…" />
-        </label>
-        <label>Label
-          <input type="text" data-field="label" value="${escapeHtml(block.label || "")}" placeholder="Link text" />
-        </label>
-      </div>`;
-  }
-  return `
-    <div class="story-block" data-block-index="${index}" data-block-type="p">
-      <div class="story-block-head">
-        <span class="tag">Paragraph</span>
-        <button type="button" class="btn btn-ghost tiny" data-block-up ${index === 0 ? "disabled" : ""}>↑</button>
-        <button type="button" class="btn btn-ghost tiny" data-block-down>↓</button>
-        <button type="button" class="btn btn-ghost tiny" data-block-remove>Remove</button>
-      </div>
-      <label class="sr-only" for="block-text-${index}">Paragraph</label>
-      <textarea id="block-text-${index}" data-field="text" rows="4" placeholder="Write… Use [label](https://url) for inline links.">${escapeHtml(block.text || "")}</textarea>
-    </div>`;
-}
-
-function readBlocksFromEditor(root) {
-  return [...root.querySelectorAll(".story-block")].map((el) => {
-    const type = el.getAttribute("data-block-type") || "p";
-    if (type === "img") {
-      return {
-        type: "img",
-        url: el.querySelector('[data-field="url"]')?.value.trim() || "",
-        alt: el.querySelector('[data-field="alt"]')?.value.trim() || "",
-      };
-    }
-    if (type === "a") {
-      return {
-        type: "a",
-        href: el.querySelector('[data-field="href"]')?.value.trim() || "",
-        label: el.querySelector('[data-field="label"]')?.value.trim() || "",
-      };
-    }
-    return { type: "p", text: el.querySelector('[data-field="text"]')?.value || "" };
-  });
-}
-
 function renderStoryEditor(root, slugOrNew) {
   const isNew = slugOrNew === "new" || !slugOrNew;
   let draft = isNew ? blankStory() : getStoryLive(slugOrNew);
@@ -855,178 +786,209 @@ function renderStoryEditor(root, slugOrNew) {
     location.hash = "#/stories";
     return;
   }
-  // clone for editing
   draft = JSON.parse(JSON.stringify(draft));
-  draft.content = normalizeContent(draft.content?.length ? draft.content : [{ type: "p", text: "" }]);
 
   setMeta({
     title: `${isNew ? "New story" : "Edit"} — fun by ayaya`,
     description: "Edit stories.",
   });
 
-  const paint = () => {
-    root.innerHTML = `
-      ${navHTML("stories")}
-      <main class="page page-narrow story-editor">
-        <header class="section-head">
-          <h1>${isNew ? "New story" : "Edit story"}</h1>
-          <p class="muted">Paragraphs, images, and links. Inline links in text: <code>[label](https://…)</code></p>
-        </header>
-        <form class="story-editor-form" data-story-form>
-          <label>Title
-            <input name="title" required value="${escapeHtml(draft.title)}" />
+  const initialHtml = contentToHtml(draft.content);
+
+  root.innerHTML = `
+    ${navHTML("stories")}
+    <main class="page page-narrow story-editor">
+      <header class="section-head">
+        <h1>${isNew ? "New story" : "Edit story"}</h1>
+        <p class="muted">Type like a doc — Enter for a new paragraph. Use the toolbar for bold, italic, underline, and size.</p>
+      </header>
+      <form class="story-editor-form" data-story-form>
+        <label>Title
+          <input name="title" required value="${escapeHtml(draft.title)}" />
+        </label>
+        <label>Subtitle
+          <input name="subtitle" value="${escapeHtml(draft.subtitle || "")}" />
+        </label>
+        <label>Excerpt
+          <textarea name="excerpt" rows="2">${escapeHtml(draft.excerpt || "")}</textarea>
+        </label>
+        <div class="story-editor-row">
+          <label>Theme
+            <input name="theme" value="${escapeHtml(draft.theme || "")}" list="theme-list" />
+            <datalist id="theme-list">${storyThemesLive().map((t) => `<option value="${escapeHtml(t)}"></option>`).join("")}</datalist>
           </label>
-          <label>Subtitle
-            <input name="subtitle" value="${escapeHtml(draft.subtitle || "")}" />
+          <label>Published
+            <input name="publishedAt" type="date" value="${escapeHtml(draft.publishedAt || "")}" />
           </label>
-          <label>Excerpt
-            <textarea name="excerpt" rows="2">${escapeHtml(draft.excerpt || "")}</textarea>
+          <label>Status
+            <select name="status">
+              <option value="published" ${draft.status === "published" ? "selected" : ""}>Published</option>
+              <option value="draft" ${draft.status === "draft" ? "selected" : ""}>Draft</option>
+            </select>
           </label>
-          <div class="story-editor-row">
-            <label>Theme
-              <input name="theme" value="${escapeHtml(draft.theme || "")}" list="theme-list" />
-              <datalist id="theme-list">${storyThemesLive().map((t) => `<option value="${escapeHtml(t)}"></option>`).join("")}</datalist>
-            </label>
-            <label>Published
-              <input name="publishedAt" type="date" value="${escapeHtml(draft.publishedAt || "")}" />
-            </label>
-            <label>Status
-              <select name="status">
-                <option value="published" ${draft.status === "published" ? "selected" : ""}>Published</option>
-                <option value="draft" ${draft.status === "draft" ? "selected" : ""}>Draft</option>
+        </div>
+        <label class="story-check"><input type="checkbox" name="featured" ${draft.featured ? "checked" : ""} /> Featured</label>
+
+        <h2 class="story-blocks-title">Content</h2>
+        <div class="story-rich-wrap">
+          <div class="story-rich-toolbar" role="toolbar" aria-label="Text formatting">
+            <button type="button" class="story-rich-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+            <button type="button" class="story-rich-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+            <button type="button" class="story-rich-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+            <label class="story-rich-size">
+              <span class="sr-only">Font size</span>
+              <select data-font-size>
+                <option value="">Size</option>
+                <option value="14px">14</option>
+                <option value="16px">16</option>
+                <option value="18px">18</option>
+                <option value="20px">20</option>
+                <option value="24px">24</option>
+                <option value="28px">28</option>
               </select>
             </label>
+            <button type="button" class="story-rich-btn" data-insert="link" title="Link">Link</button>
+            <button type="button" class="story-rich-btn" data-insert="image" title="Image">Image</button>
           </div>
-          <label class="story-check"><input type="checkbox" name="featured" ${draft.featured ? "checked" : ""} /> Featured</label>
+          <div
+            class="story-rich-editor prose"
+            data-rich-editor
+            contenteditable="true"
+            role="textbox"
+            aria-multiline="true"
+            aria-label="Story content"
+          ></div>
+        </div>
 
-          <h2 class="story-blocks-title">Content</h2>
-          <div class="story-blocks" data-blocks>
-            ${draft.content.map((b, i) => blockEditorHTML(b, i)).join("")}
-          </div>
-          <div class="story-block-adders">
-            <button type="button" class="btn btn-soft tiny" data-add-p>+ Paragraph</button>
-            <button type="button" class="btn btn-soft tiny" data-add-img>+ Image</button>
-            <button type="button" class="btn btn-soft tiny" data-add-link>+ Link</button>
-          </div>
+        <div class="story-editor-actions">
+          <button type="submit" class="btn btn-primary">Save story</button>
+          <a class="btn btn-ghost" href="${isNew ? "#/stories" : `#/story/${draft.slug}`}">Cancel</a>
+          ${!isNew ? `<button type="button" class="btn btn-ghost" data-delete-story>Delete</button>` : ""}
+        </div>
+      </form>
+    </main>`;
 
-          <div class="story-editor-actions">
-            <button type="submit" class="btn btn-primary">Save story</button>
-            <a class="btn btn-ghost" href="${isNew ? "#/stories" : `#/story/${draft.slug}`}">Cancel</a>
-            ${!isNew ? `<button type="button" class="btn btn-ghost" data-delete-story>Delete</button>` : ""}
-          </div>
-        </form>
-      </main>`;
+  const form = root.querySelector("[data-story-form]");
+  const editor = root.querySelector("[data-rich-editor]");
+  if (editor) editor.innerHTML = initialHtml || "<p><br></p>";
 
-    const form = root.querySelector("[data-story-form]");
-    const blocksEl = root.querySelector("[data-blocks]");
-
-    const syncDraftMeta = () => {
-      const fd = new FormData(form);
-      draft.title = String(fd.get("title") || "");
-      draft.subtitle = String(fd.get("subtitle") || "");
-      draft.excerpt = String(fd.get("excerpt") || "");
-      draft.theme = String(fd.get("theme") || "");
-      draft.publishedAt = String(fd.get("publishedAt") || "");
-      draft.status = String(fd.get("status") || "published");
-      draft.featured = !!form.querySelector('[name="featured"]')?.checked;
-      draft.content = readBlocksFromEditor(root);
-    };
-
-    const refreshBlocks = () => {
-      syncDraftMeta();
-      blocksEl.innerHTML = draft.content.map((b, i) => blockEditorHTML(b, i)).join("");
-      wireBlocks();
-    };
-
-    const wireBlocks = () => {
-      blocksEl.querySelectorAll(".story-block").forEach((el) => {
-        const i = Number(el.getAttribute("data-block-index"));
-        el.querySelector("[data-block-remove]")?.addEventListener("click", () => {
-          syncDraftMeta();
-          draft.content.splice(i, 1);
-          if (!draft.content.length) draft.content.push({ type: "p", text: "" });
-          refreshBlocks();
-        });
-        el.querySelector("[data-block-up]")?.addEventListener("click", () => {
-          if (i <= 0) return;
-          syncDraftMeta();
-          const t = draft.content[i - 1];
-          draft.content[i - 1] = draft.content[i];
-          draft.content[i] = t;
-          refreshBlocks();
-        });
-        el.querySelector("[data-block-down]")?.addEventListener("click", () => {
-          syncDraftMeta();
-          if (i >= draft.content.length - 1) return;
-          const t = draft.content[i + 1];
-          draft.content[i + 1] = draft.content[i];
-          draft.content[i] = t;
-          refreshBlocks();
-        });
-      });
-    };
-
-    root.querySelector("[data-add-p]")?.addEventListener("click", () => {
-      syncDraftMeta();
-      draft.content.push({ type: "p", text: "" });
-      refreshBlocks();
-    });
-    root.querySelector("[data-add-img]")?.addEventListener("click", () => {
-      syncDraftMeta();
-      draft.content.push({ type: "img", url: "", alt: "" });
-      refreshBlocks();
-    });
-    root.querySelector("[data-add-link]")?.addEventListener("click", () => {
-      syncDraftMeta();
-      draft.content.push({ type: "a", href: "", label: "" });
-      refreshBlocks();
-    });
-
-    form?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      syncDraftMeta();
-      if (!draft.title.trim()) {
-        showToast("Title is required.");
-        return;
-      }
-      draft.content = draft.content.filter((b) => {
-        if (b.type === "p") return b.text.trim();
-        if (b.type === "img") return b.url.trim();
-        if (b.type === "a") return b.href.trim();
-        return true;
-      });
-      if (!draft.content.length) draft.content.push({ type: "p", text: "" });
-      if (!draft.excerpt.trim()) {
-        const first = draft.content.find((b) => b.type === "p");
-        draft.excerpt = (first?.text || "").slice(0, 180);
-      }
-      draft.readingTime = estimateReadingTime(draft.content);
-      const saved = upsertStory(draft);
-      try {
-        await pushToApi(STORIES_ADMIN_PASSWORD);
-        showToast("Saved & synced.");
-      } catch {
-        showToast("Saved on this device.");
-      }
-      location.hash = `#/story/${saved.slug}`;
-    });
-
-    root.querySelector("[data-delete-story]")?.addEventListener("click", async () => {
-      if (!confirm("Delete this story? Seed stories will hide until you clear overrides.")) return;
-      deleteStory(draft.id);
-      try {
-        await pushToApi(STORIES_ADMIN_PASSWORD);
-      } catch {
-        /* local only */
-      }
-      showToast("Story deleted.");
-      location.hash = "#/stories";
-    });
-
-    wireBlocks();
+  const focusEditor = () => {
+    editor?.focus();
   };
 
-  paint();
+  const applyCmd = (cmd) => {
+    focusEditor();
+    document.execCommand(cmd, false, null);
+  };
+
+  const applyFontSize = (size) => {
+    if (!size || !editor) return;
+    focusEditor();
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || sel.isCollapsed) {
+      showToast("Select text first, then pick a size.");
+      return;
+    }
+    document.execCommand("styleWithCSS", false, true);
+    document.execCommand("fontSize", false, "7");
+    editor.querySelectorAll("font[size='7']").forEach((el) => {
+      const span = document.createElement("span");
+      span.style.fontSize = size;
+      while (el.firstChild) span.appendChild(el.firstChild);
+      el.replaceWith(span);
+    });
+    editor.querySelectorAll("span").forEach((el) => {
+      const fs = (el.style && el.style.fontSize) || "";
+      if (fs === "xxx-large" || fs === "-webkit-xxx-large" || fs === "xx-large") {
+        el.style.fontSize = size;
+      }
+    });
+  };
+
+  root.querySelectorAll("[data-cmd]").forEach((btn) => {
+    btn.addEventListener("mousedown", (e) => e.preventDefault());
+    btn.addEventListener("click", () => applyCmd(btn.getAttribute("data-cmd")));
+  });
+
+  root.querySelector("[data-font-size]")?.addEventListener("change", (e) => {
+    applyFontSize(e.target.value);
+    e.target.value = "";
+  });
+
+  root.querySelector('[data-insert="link"]')?.addEventListener("click", () => {
+    focusEditor();
+    const href = prompt("Link URL (https://…)");
+    if (!href) return;
+    const safe = href.trim();
+    if (!/^https?:\/\//i.test(safe) && !safe.startsWith("mailto:") && !safe.startsWith("#")) {
+      showToast("Use a full https:// link.");
+      return;
+    }
+    const label = window.getSelection()?.toString() || prompt("Link text") || safe;
+    document.execCommand("insertHTML", false, `<a href="${escapeHtml(safe)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`);
+  });
+
+  root.querySelector('[data-insert="image"]')?.addEventListener("click", () => {
+    focusEditor();
+    const url = prompt("Image URL (https://…)");
+    if (!url) return;
+    const safe = url.trim();
+    if (!/^https?:\/\//i.test(safe)) {
+      showToast("Use a full https:// image URL.");
+      return;
+    }
+    const alt = prompt("Image caption (optional)") || "";
+    document.execCommand(
+      "insertHTML",
+      false,
+      `<figure class="story-figure"><img src="${escapeHtml(safe)}" alt="${escapeHtml(alt)}" /><figcaption>${escapeHtml(alt)}</figcaption></figure><p><br></p>`
+    );
+  });
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    draft.title = String(fd.get("title") || "");
+    draft.subtitle = String(fd.get("subtitle") || "");
+    draft.excerpt = String(fd.get("excerpt") || "");
+    draft.theme = String(fd.get("theme") || "");
+    draft.publishedAt = String(fd.get("publishedAt") || "");
+    draft.status = String(fd.get("status") || "published");
+    draft.featured = !!form.querySelector('[name="featured"]')?.checked;
+    if (!draft.title.trim()) {
+      showToast("Title is required.");
+      return;
+    }
+    const html = sanitizeStoryHtml(editor?.innerHTML || "");
+    const plain = htmlToPlainText(html);
+    if (!plain && !html.includes("<img")) {
+      showToast("Write some content first.");
+      return;
+    }
+    draft.content = [{ type: "html", html }];
+    if (!draft.excerpt.trim()) draft.excerpt = plain.slice(0, 180);
+    draft.readingTime = estimateReadingTime(draft.content);
+    const saved = upsertStory(draft);
+    try {
+      await pushToApi(STORIES_ADMIN_PASSWORD);
+      showToast("Saved & synced.");
+    } catch {
+      showToast("Saved on this device.");
+    }
+    location.hash = `#/story/${saved.slug}`;
+  });
+
+  root.querySelector("[data-delete-story]")?.addEventListener("click", async () => {
+    if (!confirm("Delete this story? Seed stories will hide until you clear overrides.")) return;
+    deleteStory(draft.id);
+    try {
+      await pushToApi(STORIES_ADMIN_PASSWORD);
+    } catch {
+      /* local only */
+    }
+    showToast("Story deleted.");
+    location.hash = "#/stories";
+  });
 }
 
 /* ---------- GAMES ---------- */
