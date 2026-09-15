@@ -1,4 +1,4 @@
-# alaia fun
+# fun by ayaya
 
 Personal site: **Home · Stories · Games** (Undercover playable).
 

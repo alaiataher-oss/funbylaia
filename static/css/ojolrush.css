@@ -1,0 +1,192 @@
+/* Ojol Rush — Grab/Gojek-inspired card + launch (original, no brand logos) */
+
+:root {
+  --ojol-brand: #00aa13;
+  --ojol-brand-deep: #008c10;
+  --ojol-brand-soft: #e8f8ea;
+  --ojol-ink: #1a1a1a;
+  --ojol-muted: #5c6b73;
+  --ojol-font: "Plus Jakarta Sans", "Nunito", system-ui, sans-serif;
+  --ojol-display: "Nunito", "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.ojol-launch {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.ojol-launch-card {
+  background: #fff;
+  border-radius: 28px;
+  padding: 0 0 1.4rem;
+  text-align: center;
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+  overflow: hidden;
+  box-shadow: 0 14px 0 rgba(0, 170, 19, 0.12), 0 22px 40px rgba(15, 23, 42, 0.1);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  font-family: var(--ojol-font);
+}
+
+.ojol-launch-card .ojol-card-hero {
+  margin: 0;
+  width: 100%;
+  border-radius: 0;
+}
+
+.ojol-launch-card h1 {
+  margin: 0.2rem 1rem 0;
+  font-family: var(--ojol-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ojol-brand);
+  font-size: clamp(1.55rem, 5vw, 2rem);
+}
+
+.ojol-launch-card p {
+  margin: 0 1.25rem;
+  color: var(--ojol-muted);
+  max-width: 34ch;
+  font-family: var(--ojol-font);
+  font-weight: 500;
+}
+
+.btn-ojol-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  position: relative;
+  overflow: hidden;
+  min-width: 12.5rem;
+  padding: 0.9rem 1.55rem;
+  border-radius: 999px;
+  color: #fff !important;
+  background: linear-gradient(180deg, #19c32a, var(--ojol-brand));
+  font-family: var(--ojol-display) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  box-shadow: 0 8px 0 var(--ojol-brand-deep), 0 14px 24px rgba(0, 170, 19, 0.28);
+}
+
+.btn-ojol-cta:hover {
+  filter: brightness(1.05);
+}
+
+.btn-game-load {
+  cursor: default;
+  user-select: none;
+}
+
+.btn-game-load.is-loading {
+  pointer-events: none;
+  opacity: 0.96;
+}
+
+.btn-game-load.is-ready {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.btn-game-load.is-error {
+  cursor: pointer;
+  pointer-events: auto;
+  background: linear-gradient(180deg, #fb923c, #ea580c);
+  box-shadow: 0 8px 0 #c2410c, 0 14px 24px rgba(234, 88, 12, 0.28);
+}
+
+.btn-load-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: width 0.18s ease;
+  pointer-events: none;
+}
+
+.btn-load-label {
+  position: relative;
+  z-index: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ojol-load-hint {
+  margin: 0.25rem 1.25rem 0 !important;
+  font-size: 0.78rem !important;
+  color: var(--ojol-muted) !important;
+  font-weight: 600;
+}
+
+.game-ojol .ojol-load-hint {
+  text-align: center;
+  width: 100%;
+  max-width: none;
+}
+
+.ojol-launch-back {
+  color: #64748b;
+  text-decoration: none;
+  font-weight: 700;
+  font-family: var(--ojol-font);
+}
+
+/* —— Solo games list card —— */
+.game-ojol {
+  background:
+    radial-gradient(280px 160px at 90% 0%, rgba(0, 170, 19, 0.12), transparent 55%),
+    radial-gradient(240px 140px at 0% 100%, rgba(125, 211, 252, 0.22), transparent 50%),
+    linear-gradient(165deg, #f3fff5, #e8f8ea 55%, #ecfeff);
+  font-family: var(--ojol-font);
+}
+
+.game-ojol h2 {
+  font-family: var(--ojol-display) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.035em;
+  color: var(--ojol-brand) !important;
+  font-size: clamp(1.45rem, 4.2vw, 1.85rem) !important;
+}
+
+.ojol-card-hero {
+  display: block;
+  width: calc(100% + 0.4rem);
+  margin: -0.35rem -0.2rem 0.65rem;
+  border-radius: 18px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(135deg, #7dd3fc, #86efac);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+
+.ojol-card-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ojol-card-art {
+  /* legacy text banner fallback — unused when hero image present */
+  display: none;
+}
+
+.ojol-card-tagline {
+  margin: 0;
+  font-family: var(--ojol-font) !important;
+  font-weight: 700 !important;
+  color: #0f766e !important;
+  letter-spacing: -0.01em;
+}
+
+.game-ojol .game-meta,
+.game-ojol > p {
+  font-family: var(--ojol-font);
+}
+
+.game-ojol .btn-ojol-cta {
+  width: 100%;
+  margin-top: 0.25rem;
+}

@@ -535,6 +535,7 @@ def _public_player(p: dict[str, Any], you_id: Optional[str], room: dict[str, Any
         "investLocked": bool(p.get("investLocked")),
         "decisionLocked": bool(p.get("decisionLocked")),
         "answerLocked": bool(p.get("answerLocked")),
+        "briefingReady": bool(p.get("briefingReady")),
         "roundPl": p.get("roundPl") if status in ("MARKET_REVEAL", "HOLD_OR_SELL", "DECISION_REVEAL", "ROUND_COMPLETE", "FINAL_RESULTS") else None,
     }
     if is_you:
@@ -693,28 +694,60 @@ def join_room(code: str, body: JoinBody) -> dict[str, Any]:
 
 @router.get("/rooms/{code}")
 def get_room(code: str, playerId: Optional[str] = None) -> dict[str, Any]:
+    """Poll room. May advance timed phases, but does not rewrite lastSeen (avoids wiping ready flags)."""
     room = _load(code)
-    changed = _maybe_advance(room)
-    if playerId:
-        p = _find_player(room, playerId)
-        if p:
-            p["lastSeen"] = _now()
-            changed = True
-    if changed:
+    if _maybe_advance(room):
         _save(room)
     return _public(room, playerId)
+
+
+@router.post("/rooms/{code}/heartbeat")
+def heartbeat(code: str, body: IdBody) -> dict[str, Any]:
+    room = _load(code)
+    p = _find_player(room, body.playerId)
+    if not p or p.get("left"):
+        raise HTTPException(status_code=403, detail="Not a player in this room.")
+    p["lastSeen"] = _now()
+    advanced = _maybe_advance(room)
+    _save(room)
+    return _public(room, body.playerId)
 
 
 @router.post("/rooms/{code}/start")
 def start_game(code: str, body: IdBody) -> dict[str, Any]:
     room = _load(code)
     if body.playerId != room.get("hostId"):
-        raise HTTPException(status_code=403, detail="Only the host can start.")
+        raise HTTPException(status_code=403, detail="Only the host can start the market.")
     if room["status"] != "LOBBY":
         raise HTTPException(status_code=400, detail="Game already started.")
-    if len(_active_players(room)) < MIN_PLAYERS:
-        raise HTTPException(status_code=400, detail="Need at least 2 players.")
-    _begin_round(room)
+    n = len(_active_players(room))
+    if n < MIN_PLAYERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Need at least {MIN_PLAYERS} players to start. Right now you have {n}. Share your room code and wait for a friend to join.",
+        )
+    # Beginner briefing before Round 1
+    for p in _active_players(room):
+        p["briefingReady"] = False
+    room["status"] = "BRIEFING"
+    room["phaseAt"] = _now()
+    room["autoAdvanceAt"] = None
+    _save(room)
+    return _public(room, body.playerId)
+
+
+@router.post("/rooms/{code}/briefing-ready")
+def briefing_ready(code: str, body: IdBody) -> dict[str, Any]:
+    room = _load(code)
+    p = _find_player(room, body.playerId)
+    if not p or p.get("left"):
+        raise HTTPException(status_code=403, detail="Not a player in this room.")
+    if room["status"] != "BRIEFING":
+        return _public(room, body.playerId)
+    p["briefingReady"] = True
+    p["lastSeen"] = _now()
+    if all(x.get("briefingReady") for x in _active_players(room)):
+        _begin_round(room)
     _save(room)
     return _public(room, body.playerId)
 

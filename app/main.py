@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from app.routers.api import router as api_router
 from app.routers.ttt import router as ttt_router
 from app.routers.rsm import router as rsm_router
+from app.routers.stories import router as stories_router
 from app.sheets import start_retry_worker
 from app.store import ensure_store
 
@@ -23,7 +24,7 @@ ensure_store()
 if os.getenv("VERCEL") != "1":
     start_retry_worker()
 
-app = FastAPI(title="alaia fun", version="1.1.0")
+app = FastAPI(title="fun by ayaya", version="1.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -34,18 +35,25 @@ app.add_middleware(
 app.include_router(api_router)
 app.include_router(ttt_router)
 app.include_router(rsm_router)
+app.include_router(stories_router)
 
 static_dir = ROOT / "static"
 try:
     static_dir.mkdir(exist_ok=True)
 except OSError:
     pass
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/static", StaticFiles(directory=static_dir, html=True), name="static")
 
 
 @app.get("/")
 def index() -> FileResponse:
     return FileResponse(static_dir / "index.html")
+
+
+@app.get("/ojol-rush")
+@app.get("/ojol-rush/")
+def ojol_rush() -> FileResponse:
+    return FileResponse(static_dir / "ojol-rush" / "index.html")
 
 
 @app.get("/health")

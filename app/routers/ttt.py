@@ -72,7 +72,7 @@ def _winner(board: list[Any]) -> tuple[Optional[str], Optional[list[int]]]:
     return None, None
 
 
-_ONLINE_SEC = 8.0
+_ONLINE_SEC = 18.0
 
 
 def _is_online(player: dict[str, Any]) -> bool:
@@ -215,6 +215,57 @@ def _sb_upsert(room: dict[str, Any]) -> None:
     if not sb:
         return
     sb.table("ttt_rooms").upsert(_room_to_row(room)).execute()
+
+
+def _sb_touch_last_seen(code: str, mark: str) -> None:
+    """Update only presence columns so polls cannot wipe ready/board state."""
+    sb = _supabase()
+    if not sb:
+        return
+    col = "last_seen_x" if mark == "X" else "last_seen_o"
+    sb.table("ttt_rooms").update({col: _now(), "updated_at": _now()}).eq("code", code.upper()).execute()
+
+
+def _sb_set_ready(code: str, mark: str) -> None:
+    """Set one player's ready flag without rewriting the other player's ready/status."""
+    sb = _supabase()
+    if not sb:
+        return
+    ready_col = "ready_x" if mark == "X" else "ready_o"
+    seen_col = "last_seen_x" if mark == "X" else "last_seen_o"
+    sb.table("ttt_rooms").update(
+        {ready_col: True, seen_col: _now(), "updated_at": _now()}
+    ).eq("code", code.upper()).execute()
+
+
+def _touch_last_seen(room: dict[str, Any], mark: str) -> None:
+    now = _now()
+    room["players"][mark]["lastSeen"] = now
+    if _use_supabase():
+        _sb_touch_last_seen(room["code"], mark)
+        return
+    with _lock:
+        live = _memory.get(room["code"])
+        if not live:
+            return
+        live["players"][mark]["lastSeen"] = now
+        live["updatedAt"] = now
+
+
+def _maybe_begin_game(room: dict[str, Any]) -> bool:
+    """If both seats are filled and ready, move lobby → playing. Returns True when status changed."""
+    if room.get("status") not in ("lobby", "waiting"):
+        return False
+    px = room["players"]["X"]
+    po = room["players"]["O"]
+    if not (px.get("id") and po.get("id") and px.get("ready") and po.get("ready")):
+        return False
+    room["status"] = "playing"
+    room["board"] = _empty_board()
+    room["turn"] = room.get("firstMark", "X")
+    room["winner"] = None
+    room["winningLine"] = None
+    return True
 
 
 def _mem_purge() -> None:
@@ -368,12 +419,23 @@ def join_room(code: str) -> dict[str, Any]:
 
 
 @router.get("/rooms/{code}")
-def get_room(code: str, playerId: Optional[str] = None) -> dict[str, Any]:
+def get_room(
+    code: str,
+    playerId: Optional[str] = None,
+    pulse: bool = False,
+) -> dict[str, Any]:
+    """Poll room state. pulse=1 also updates presence (replaces a separate heartbeat RTT)."""
     room = _load(code)
     you = _mark_for(room, playerId) if playerId else None
-    if playerId and you:
-        room["players"][you]["lastSeen"] = _now()
+    if pulse and you:
+        _touch_last_seen(room, you)
+        # Reload so we see partner ready/moves written by the other client
+        room = _load(code)
+        you = _mark_for(room, playerId) if playerId else you
+    if _maybe_begin_game(room):
         _save(room)
+        # ensure start transition is visible on this response
+        room = _load(code)
     return _public(room, you)
 
 
@@ -383,8 +445,10 @@ def heartbeat(code: str, body: IdBody) -> dict[str, Any]:
     you = _mark_for(room, body.playerId)
     if not you:
         raise HTTPException(status_code=403, detail="Not a player in this room.")
-    room["players"][you]["lastSeen"] = _now()
-    _save(room)
+    _touch_last_seen(room, you)
+    room = _load(code)
+    if _maybe_begin_game(room):
+        _save(room)
     return _public(room, you)
 
 
@@ -398,18 +462,30 @@ def set_ready(code: str, body: IdBody) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="Ready is only available in the lobby.")
     if not room["players"]["X"].get("id") or not room["players"]["O"].get("id"):
         raise HTTPException(status_code=400, detail="Waiting for your partner to join.")
-    room["players"][you]["ready"] = True
-    room["players"][you]["lastSeen"] = _now()
+
     start_sound = False
-    if room["players"]["X"]["ready"] and room["players"]["O"]["ready"]:
-        room["status"] = "playing"
-        room["board"] = _empty_board()
-        room["turn"] = room.get("firstMark", "X")
-        room["winner"] = None
-        room["winningLine"] = None
-        start_sound = True
-    _save(room)
-    return {"startSound": start_sound, **_public(room, you)}
+    if _use_supabase():
+        # Column-only ready write so two players clicking at once cannot wipe each other
+        _sb_set_ready(room["code"], you)
+        room = _load(code)
+        if _maybe_begin_game(room):
+            start_sound = True
+            _save(room)
+        return {"startSound": start_sound, **_public(room, you)}
+
+    with _lock:
+        live = _memory.get(room["code"])
+        if not live:
+            raise HTTPException(status_code=404, detail="Room not found. Check the code.")
+        mark = _mark_for(live, body.playerId)
+        if not mark:
+            raise HTTPException(status_code=403, detail="Not a player in this room.")
+        live["players"][mark]["ready"] = True
+        live["players"][mark]["lastSeen"] = _now()
+        if _maybe_begin_game(live):
+            start_sound = True
+        live["updatedAt"] = _now()
+        return {"startSound": start_sound, **_public(deepcopy(live), mark)}
 
 
 @router.post("/rooms/{code}/move")

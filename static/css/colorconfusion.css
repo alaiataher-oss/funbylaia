@@ -1,0 +1,443 @@
+/* Color Confusion — fast Stroop solo game */
+
+body.theme-cc {
+  --cc-ink: #0f172a;
+  --cc-muted: #475569;
+  --cc-card: #ffffff;
+  --cc-ok: #16a34a;
+  --cc-bad: #dc2626;
+  --cc-accent: #7c3aed;
+  background:
+    radial-gradient(900px 500px at 5% -10%, rgba(236, 64, 122, 0.18), transparent 55%),
+    radial-gradient(800px 460px at 100% 0%, rgba(30, 136, 229, 0.16), transparent 50%),
+    radial-gradient(700px 400px at 50% 110%, rgba(251, 140, 0, 0.14), transparent 55%),
+    linear-gradient(180deg, #fff7ed 0%, #f5f3ff 45%, #ecfeff 100%) !important;
+}
+
+.cc-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding-bottom: calc(2rem + var(--safe-bottom));
+  color: var(--cc-ink);
+  font-family: var(--fc-body, "Nunito", "DM Sans", sans-serif);
+}
+
+.cc-swatches {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-bottom: 0.65rem;
+}
+
+.cc-swatches i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.cc-swatches i:nth-child(1) { background: #e53935; }
+.cc-swatches i:nth-child(2) { background: #1e88e5; }
+.cc-swatches i:nth-child(3) { background: #43a047; }
+.cc-swatches i:nth-child(4) { background: #f9a825; }
+.cc-swatches i:nth-child(5) { background: #8e24aa; }
+.cc-swatches i:nth-child(6) { background: #fb8c00; }
+
+.cc-hero,
+.cc-results {
+  text-align: center;
+  background: var(--cc-card);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 28px;
+  padding: 1.55rem 1.2rem 1.45rem;
+  box-shadow:
+    0 12px 0 rgba(124, 58, 237, 0.12),
+    0 22px 40px rgba(15, 23, 42, 0.08);
+  display: grid;
+  gap: 0.65rem;
+  justify-items: center;
+}
+
+.cc-hero h1,
+.cc-results h2 {
+  margin: 0;
+  font-family: var(--fc-display, "Fredoka", sans-serif);
+  font-size: clamp(1.9rem, 5.5vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.cc-sub {
+  margin: 0;
+  color: var(--cc-accent);
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.cc-lead,
+.cc-msg {
+  margin: 0;
+  color: var(--cc-muted);
+  max-width: 34ch;
+  line-height: 1.45;
+}
+
+.cc-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  color: var(--cc-muted);
+  font-size: 0.95rem;
+}
+
+.cc-rules strong {
+  color: var(--cc-ink);
+}
+
+.cc-best {
+  margin: 0;
+  color: var(--cc-muted);
+}
+
+.cc-best strong {
+  color: var(--cc-ink);
+}
+
+.cc-btn-primary {
+  border: none;
+  color: #fff !important;
+  background: linear-gradient(180deg, #a78bfa, #7c3aed);
+  border-radius: 999px;
+  padding: 0.8rem 1.4rem;
+  font-weight: 800;
+  box-shadow: 0 8px 0 #5b21b6, 0 14px 24px rgba(124, 58, 237, 0.3);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.cc-btn-primary:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.cc-btn-primary:active {
+  transform: translateY(3px);
+  box-shadow: 0 4px 0 #5b21b6;
+}
+
+.cc-btn-ghost {
+  border: 2px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  color: var(--cc-ink) !important;
+  border-radius: 999px;
+  padding: 0.72rem 1.2rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.cc-back {
+  color: var(--cc-muted);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.cc-back:hover {
+  color: var(--cc-accent);
+}
+
+.cc-hud {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.55rem 1rem;
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 1rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 0 rgba(15, 23, 42, 0.06);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--cc-muted);
+}
+
+.cc-hud strong {
+  color: var(--cc-ink);
+  font-size: 1.15rem;
+}
+
+.cc-arena {
+  background: #fff;
+  border-radius: 28px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 1.25rem 1rem 1.15rem;
+  box-shadow:
+    0 12px 0 rgba(15, 23, 42, 0.06),
+    0 20px 36px rgba(15, 23, 42, 0.08);
+  display: grid;
+  gap: 0.85rem;
+  justify-items: center;
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.cc-arena.is-ok {
+  box-shadow:
+    0 12px 0 rgba(22, 163, 74, 0.28),
+    0 20px 36px rgba(22, 163, 74, 0.18);
+  background: #f0fdf4;
+}
+
+.cc-arena.is-ok::after {
+  content: "✓";
+  position: fixed;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%) scale(1);
+  font-size: 3.5rem;
+  color: var(--cc-ok);
+  font-weight: 900;
+  pointer-events: none;
+  animation: cc-pop 0.22s ease-out;
+  z-index: 5;
+}
+
+.cc-arena.is-bad {
+  animation: cc-shake 0.22s ease;
+  box-shadow:
+    0 12px 0 rgba(220, 38, 38, 0.22),
+    0 20px 36px rgba(220, 38, 38, 0.14);
+  background: #fef2f2;
+}
+
+.cc-arena.is-bad::after {
+  content: "✕";
+  position: fixed;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  font-size: 3.2rem;
+  color: var(--cc-bad);
+  font-weight: 900;
+  pointer-events: none;
+  animation: cc-pop 0.22s ease-out;
+  z-index: 5;
+}
+
+@keyframes cc-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes cc-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.cc-prompt {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cc-muted);
+}
+
+.cc-word {
+  margin: 0.15rem 0 0.35rem;
+  font-family: var(--fc-display, "Fredoka", sans-serif);
+  font-size: clamp(3.2rem, 14vw, 5.2rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.35),
+    0 2px 10px rgba(15, 23, 42, 0.12);
+  user-select: none;
+}
+
+.cc-choices {
+  display: grid;
+  gap: 0.65rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.cc-choice {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  border: 2px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
+  color: var(--cc-ink);
+  font: inherit;
+  font-family: var(--fc-display, "Fredoka", sans-serif);
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 6px 0 rgba(15, 23, 42, 0.08);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cc-choice:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(124, 58, 237, 0.45);
+  box-shadow: 0 8px 0 rgba(124, 58, 237, 0.18);
+}
+
+.cc-choice:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(15, 23, 42, 0.08);
+}
+
+.cc-choice:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.cc-key {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.12);
+  color: var(--cc-accent);
+  font-size: 0.95rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.cc-keys-hint {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--cc-muted);
+  font-weight: 650;
+}
+
+.cc-scoreline {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.cc-scoreline strong {
+  font-size: 1.8rem;
+  color: var(--cc-accent);
+}
+
+.cc-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  color: var(--cc-muted);
+  width: 100%;
+  max-width: 18rem;
+  text-align: left;
+}
+
+.cc-stats strong {
+  color: var(--cc-ink);
+  float: right;
+}
+
+.cc-msg {
+  font-weight: 800;
+  color: var(--cc-accent) !important;
+  font-size: 1.05rem;
+}
+
+.cc-end-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: center;
+  margin-top: 0.25rem;
+}
+
+/* Games list card */
+.game-cc {
+  background:
+    radial-gradient(280px 160px at 90% 0%, rgba(236, 64, 122, 0.2), transparent 55%),
+    radial-gradient(240px 140px at 0% 100%, rgba(124, 58, 237, 0.16), transparent 50%),
+    linear-gradient(165deg, #fff7ed, #f5f3ff);
+}
+
+.game-cc h2 {
+  font-family: var(--fc-display, "Fredoka", sans-serif);
+  color: #6d28d9;
+}
+
+.cc-card-art {
+  margin: -0.2rem -0.2rem 0.5rem;
+  border-radius: 18px;
+  padding: 1rem 0.85rem;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.cc-art-word {
+  display: block;
+  text-align: center;
+  font-family: var(--fc-display, "Fredoka", sans-serif);
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #e53935;
+}
+
+.cc-art-hint {
+  display: block;
+  text-align: center;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.cc-card-tagline {
+  margin: 0;
+  font-weight: 750 !important;
+  color: #7c3aed !important;
+}
+
+.btn-cc-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  padding: 0.78rem 1.15rem;
+  border-radius: 999px;
+  color: #fff !important;
+  background: linear-gradient(180deg, #a78bfa, #7c3aed);
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 8px 0 #5b21b6, 0 14px 24px rgba(124, 58, 237, 0.28);
+}
+
+.btn-cc-cta:hover {
+  filter: brightness(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-arena.is-bad,
+  .cc-arena.is-ok::after,
+  .cc-arena.is-bad::after,
+  .cc-choice {
+    animation: none !important;
+  }
+}

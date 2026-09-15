@@ -1,15 +1,27 @@
 import {
-  publishedStories,
-  getStoryBySlug,
-  storyThemes,
-  adjacentStories,
-} from "./stories-data.js";
+  getStoryLive,
+  allStories,
+  storyThemesLive,
+  adjacentStoriesLive,
+  upsertStory,
+  deleteStory,
+  blankStory,
+  renderContentBlocks,
+  hydrateFromApi,
+  pushToApi,
+  normalizeContent,
+  estimateReadingTime,
+} from "./stories-store.js";
 import { renderUndercover, startUndercover } from "./undercover.js";
 import { playUndercoverJingle } from "./undercover-jingle.js";
-import { playRomanticBumper } from "./romantic-bumper.js";
+import { playWelcomeBumper } from "./romantic-bumper.js";
 import { renderTicTacToe, startTicTacToe } from "./tictactoe.js";
 import { playTicTacToeJingle } from "./tictactoe-jingle.js";
 import { renderRsm, startRsm } from "./rsm.js";
+import { renderFoodChain, startFoodChain } from "./foodchain.js";
+import { renderHigherLower, startHigherLower } from "./higherlower.js";
+import { renderColorConfusion, startColorConfusion } from "./colorconfusion.js";
+import { renderOjolRush, ensureOjolPreload, wireGameLoadButton, GAME_HREF } from "./ojolrush.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -57,6 +69,7 @@ const storage = {
 
 const LANDING_DONE_KEY = "alaiafun_landing_done";
 const ENTERED_KEY = "alaiafun_entered";
+const BUMPER_SESSION_KEY = "alaiafun_bumper_seen";
 
 function hasFinishedLanding() {
   return !!storage.get(LANDING_DONE_KEY, false);
@@ -64,6 +77,21 @@ function hasFinishedLanding() {
 function markLandingDone() {
   storage.set(LANDING_DONE_KEY, true);
   storage.set(ENTERED_KEY, true);
+}
+function hasSeenBumperThisSession() {
+  try {
+    return sessionStorage.getItem(BUMPER_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function markBumperSeen() {
+  try {
+    sessionStorage.setItem(BUMPER_SESSION_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+  markLandingDone();
 }
 
 let storyFilters = {
@@ -86,7 +114,7 @@ function setMeta({ title, description }) {
 function navHTML(active) {
   return `
   <nav class="site-nav" id="site-nav" aria-label="Primary">
-    <a class="nav-brand" href="#/home">♡ alaia fun</a>
+    <a class="nav-brand" href="#/home">♡ fun by ayaya</a>
     <div class="nav-links">
       <a href="#/home" class="${active === "home" ? "is-active" : ""}" ${active === "home" ? 'aria-current="page"' : ""}>Home</a>
       <a href="#/stories" class="${active === "stories" ? "is-active" : ""}" ${active === "stories" ? 'aria-current="page"' : ""}>Stories</a>
@@ -143,21 +171,36 @@ function render() {
     app._rsmCleanup();
     app._rsmCleanup = null;
   }
-
-  if (!hasFinishedLanding()) {
-    markLandingDone();
+  if (route !== "foodchain" && typeof app._fcCleanup === "function") {
+    app._fcCleanup();
+    app._fcCleanup = null;
+  }
+  if (route !== "higherlower" && typeof app._hlCleanup === "function") {
+    app._hlCleanup();
+    app._hlCleanup = null;
+  }
+  if (route !== "colorconfusion" && typeof app._ccCleanup === "function") {
+    app._ccCleanup();
+    app._ccCleanup = null;
   }
 
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (!reduce) {
+  if (!reduce && route !== "bumper") {
     app.classList.remove("page-enter");
     void app.offsetWidth;
     app.classList.add("page-enter");
   }
 
-  // Landing + bumper skipped
-  if (route === "landing" || route === "bumper") {
-    location.hash = "#/home";
+  // Short welcome bumper once per browser session
+  if (route === "landing") {
+    location.hash = "#/bumper";
+    return;
+  }
+  if (route === "bumper") {
+    return renderBumper(app);
+  }
+  if (!hasSeenBumperThisSession()) {
+    location.hash = "#/bumper";
     return;
   }
   // Hide unfinished QC / bank routes from visitors
@@ -166,146 +209,173 @@ function render() {
     return;
   }
   if (route === "stories") {
-    document.body.classList.remove("theme-undercover", "theme-ttt", "theme-rsm");
+    document.body.classList.remove("theme-undercover", "theme-ttt", "theme-rsm", "theme-fc", "theme-hl", "theme-cc", "theme-games");
+    if (!isStoriesUnlocked()) return renderStoriesGate(app);
+    if (parts[1] === "new") return renderStoryEditor(app, "new");
     return renderStoriesPage(app);
   }
   if (route === "story") {
-    document.body.classList.remove("theme-undercover", "theme-ttt", "theme-rsm");
+    document.body.classList.remove("theme-undercover", "theme-ttt", "theme-rsm", "theme-fc", "theme-hl", "theme-cc", "theme-games");
+    if (!isStoriesUnlocked()) return renderStoriesGate(app);
+    if (parts[2] === "edit") return renderStoryEditor(app, parts[1]);
     return renderStoryPage(app, parts[1]);
   }
   if (route === "games") {
-    document.body.classList.remove("theme-undercover", "theme-ttt", "theme-rsm");
-    return renderGamesPage(app);
+    document.body.classList.remove("theme-undercover", "theme-ttt", "theme-rsm", "theme-fc", "theme-hl", "theme-cc");
+    document.body.classList.add("theme-games");
+    return renderGamesPage(app, parts[1]);
   }
   if (route === "undercover") {
+    document.body.classList.remove("theme-games");
     document.body.classList.add("theme-undercover");
-    document.body.classList.remove("theme-ttt", "theme-rsm");
+    document.body.classList.remove("theme-ttt", "theme-rsm", "theme-fc", "theme-hl", "theme-cc");
     return renderUndercover(app, { navHTML, setMeta, showToast });
   }
   if (route === "tictactoe") {
-    document.body.classList.remove("theme-undercover");
+    document.body.classList.remove("theme-games", "theme-undercover");
     document.body.classList.add("theme-ttt");
-    document.body.classList.remove("theme-rsm");
+    document.body.classList.remove("theme-rsm", "theme-fc", "theme-hl", "theme-cc");
     return renderTicTacToe(app, { navHTML, setMeta, showToast });
   }
   if (route === "rsm") {
-    document.body.classList.remove("theme-undercover", "theme-ttt");
+    document.body.classList.remove("theme-games", "theme-undercover", "theme-ttt", "theme-fc", "theme-hl", "theme-cc");
     document.body.classList.add("theme-rsm");
     return renderRsm(app, { navHTML, setMeta, showToast });
   }
+  if (route === "foodchain") {
+    document.body.classList.remove("theme-games", "theme-undercover", "theme-ttt", "theme-rsm", "theme-hl", "theme-cc");
+    document.body.classList.add("theme-fc");
+    return renderFoodChain(app, { navHTML, setMeta, showToast });
+  }
+  if (route === "higherlower") {
+    document.body.classList.remove("theme-games", "theme-undercover", "theme-ttt", "theme-rsm", "theme-fc", "theme-cc");
+    document.body.classList.add("theme-hl");
+    return renderHigherLower(app, { navHTML, setMeta, showToast });
+  }
+  if (route === "colorconfusion") {
+    document.body.classList.remove("theme-games", "theme-undercover", "theme-ttt", "theme-rsm", "theme-fc", "theme-hl");
+    document.body.classList.add("theme-cc");
+    return renderColorConfusion(app, { navHTML, setMeta, showToast });
+  }
+  if (route === "ojolrush") {
+    document.body.classList.remove("theme-games", "theme-undercover", "theme-ttt", "theme-rsm", "theme-fc", "theme-hl", "theme-cc");
+    return renderOjolRush(app, { navHTML, setMeta, showToast });
+  }
+  document.body.classList.remove("theme-games");
   document.body.classList.remove("theme-undercover");
   document.body.classList.remove("theme-ttt");
   document.body.classList.remove("theme-rsm");
+  document.body.classList.remove("theme-fc");
+  document.body.classList.remove("theme-hl");
+  document.body.classList.remove("theme-cc");
   return renderHome(app);
 }
 
-/* ---------- bumper (landing skipped) ---------- */
+/* ---------- welcome bumper ---------- */
 function renderBumper(root) {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   setMeta({
-    title: "alaia fun",
+    title: "Welcome · fun by ayaya",
     description: "A quiet corner for stories and games.",
   });
   root.innerHTML = `
-    <section class="bumper-screen" id="bumper" aria-label="Opening bumper">
-      <div class="film-letterbox" aria-hidden="true"></div>
-      <div class="bumper-track" aria-hidden="true">
-        <div class="bumper-stripe"></div>
-        <div class="bumper-stripe alt"></div>
+    <section class="bumper-screen bumper-welcome" id="bumper" aria-label="Welcome bumper">
+      <div class="welcome-glow" aria-hidden="true"></div>
+      <div class="welcome-portal" aria-hidden="true"></div>
+      <div class="welcome-doors" aria-hidden="true">
+        <div class="welcome-door left"><span class="door-knob"></span></div>
+        <div class="welcome-door right"><span class="door-knob"></span></div>
       </div>
-      <div class="bumper-stage ${reduce ? "is-ready" : ""}">
-        <p class="bumper-kicker">loading · soft entrance</p>
-        <div class="bumper-logo" aria-hidden="true">♡</div>
-        <h1 class="bumper-title">
-          <span class="bumper-line">The way you change your life</span>
-          <span class="bumper-line accent">is by changing the mind you meet it with.</span>
-        </h1>
-        <p class="bumper-sub">Not a new city. Not a new plan first.<br/>A different way of seeing — then everything else can move.</p>
-        <div class="bumper-load" aria-hidden="true">
-          <span class="bumper-load-bar"></span>
+      <div class="bumper-stage welcome-stage ${reduce ? "is-ready is-open" : ""}">
+        <div class="welcome-hero">
+          <div class="welcome-frame">
+            <img class="welcome-photo welcome-photo-peek" src="/static/img/alaia-peek-door.png" alt="Welcome" width="480" height="640" />
+            <img class="welcome-photo welcome-photo-open" src="/static/img/alaia-open-door.png" alt="" width="480" height="640" />
+            <div class="welcome-sparkles" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </div>
         </div>
-        <p class="bumper-loading-label" data-load-label>Preparing your corner…</p>
-        <button class="btn btn-primary btn-3d bumper-cta" type="button" data-continue ${reduce ? "" : "hidden"}>Enter</button>
-        <button class="btn btn-ghost bumper-unlock" type="button" data-unlock hidden>Tap for sound ♡</button>
+        <button class="sr-only" type="button" data-continue>Enter</button>
       </div>
     </section>`;
 
+  const screen = root.querySelector("#bumper");
   const stage = root.querySelector(".bumper-stage");
   const cta = root.querySelector("[data-continue]");
-  const unlock = root.querySelector("[data-unlock]");
-  const label = root.querySelector("[data-load-label]");
   let finished = false;
   let soundStarted = false;
 
   const goHome = () => {
     if (finished) return;
     finished = true;
-    markLandingDone();
+    markBumperSeen();
     location.hash = "#/home";
   };
 
-  const startSound = () => {
+  const openDoorAndEnter = () => {
+    if (finished) return;
+    stage?.classList.add("is-open");
+    screen?.classList.add("is-door-open");
+    setTimeout(() => {
+      screen?.classList.add("is-entering");
+    }, 900);
+    setTimeout(goHome, 1750);
+  };
+
+  const startSound = async () => {
     if (soundStarted) return;
     soundStarted = true;
-    playRomanticBumper();
+    try {
+      await playWelcomeBumper();
+    } catch {
+      /* ignore */
+    }
   };
 
-  const reveal = () => {
-    stage.classList.add("is-ready");
-    if (cta) cta.hidden = false;
-    if (label) label.textContent = "Ready when you are";
-    live("Enter when you’re ready");
+  const boot = async () => {
+    stage?.classList.add("is-ready");
+    await startSound();
+    live("Welcome");
   };
 
-  // Try romantic pad immediately; if autoplay blocked, offer tap
-  playRomanticBumper().then(() => {
-    soundStarted = true;
-  }).catch(() => {
-    if (unlock) unlock.hidden = false;
-  });
-  // Some browsers resolve play without throwing but stay silent — offer unlock briefly
-  setTimeout(() => {
-    if (!soundStarted && unlock) unlock.hidden = false;
-  }, 400);
-
-  unlock?.addEventListener("click", () => {
-    startSound();
-    unlock.hidden = true;
-  });
-
-  // First tap anywhere also unlocks audio
   root.querySelector("#bumper")?.addEventListener(
     "pointerdown",
     () => {
-      startSound();
-      if (unlock) unlock.hidden = true;
+      if (!soundStarted) startSound();
     },
     { once: true }
   );
 
-  if (reduce) {
-    if (cta) cta.hidden = false;
-    setTimeout(goHome, 1200);
-  } else {
-    setTimeout(reveal, 2600);
-    // Auto-enter home after loading mood
-    setTimeout(goHome, 3800);
-  }
+  cta.onclick = (e) => {
+    e.preventDefault();
+    openDoorAndEnter();
+  };
 
-  cta.onclick = goHome;
+  if (reduce) {
+    stage?.classList.add("is-ready", "is-open");
+    screen?.classList.add("is-door-open");
+    setTimeout(goHome, 1100);
+  } else {
+    requestAnimationFrame(() => {
+      stage?.classList.add("is-ready");
+      screen?.classList.add("is-peeking");
+    });
+    setTimeout(boot, 700);
+    setTimeout(openDoorAndEnter, 2400);
+  }
 }
 
 /* ---------- HOME ---------- */
 function renderHome(root) {
   setMeta({
-    title: "alaia fun · Home",
+    title: "fun by ayaya · Home",
     description:
-      "Personal stories for alone time, and games to play with someone else.",
+      "Stories and solo games for me time, plus multiplayer games for hangouts.",
   });
-  const latest = publishedStories().slice(0, 3);
   root.innerHTML = `
     ${navHTML("home")}
-    <main class="page home-page home-glam">
+    <main class="page home-page home-glam home-doors-only">
       <header class="home-hero-glam">
         <div class="hero-glam-bg" aria-hidden="true">
           <span class="spark s1"></span>
@@ -318,89 +388,130 @@ function renderHome(root) {
           <span class="xoxo-stamp" aria-hidden="true">xoxo</span>
         </div>
         <h1>Your life might already feel full, but leave the door open.</h1>
-        <p class="hero-lead">For someone, or a story, that could unexpectedly matter.</p>
+        <p class="hero-lead">For someone, a story, or an experience that could unexpectedly matter.</p>
         <p class="hero-scroll-hint">pick a door ↓</p>
       </header>
 
-      <section class="entry-duo" aria-label="Pick a door">
-        <a class="entry-card entry-stories" href="#/stories">
-          <span class="entry-for">for your me time</span>
-          <span class="entry-icon" aria-hidden="true">
-            <svg viewBox="0 0 64 64" width="56" height="56" fill="none">
-              <rect x="12" y="10" width="28" height="38" rx="4" stroke="currentColor" stroke-width="2.2"/>
-              <path d="M18 20h16M18 28h14M18 36h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-              <circle cx="44" cy="42" r="10" fill="currentColor" opacity="0.15"/>
-              <path d="M40 42h8M44 38v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </span>
-          <h2>Personal Stories</h2>
-          <p>Quiet reads for alone hours, the strangely familiar kind.</p>
-          <span class="entry-go">Open the diary →</span>
-        </a>
+      <div class="home-doors-row">
+        <section class="home-door-section home-door-me" aria-labelledby="me-time-heading">
+          <p class="home-door-kicker" id="me-time-heading">for your me time</p>
+          <div class="entry-stack">
+            <a class="entry-card entry-stories" href="#/stories">
+              <span class="entry-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" width="56" height="56" fill="none">
+                  <rect x="12" y="10" width="28" height="38" rx="4" stroke="currentColor" stroke-width="2.2"/>
+                  <path d="M18 20h16M18 28h14M18 36h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                  <path d="M38 34c0-4 3-7 7-7s7 3 7 7c0 6-7 11-7 11s-7-5-7-11z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                  <circle cx="45" cy="34" r="1.6" fill="currentColor"/>
+                </svg>
+              </span>
+              <h2>Stories for your soul</h2>
+              <p>Short reads that might hit close, or quietly steal a whole evening.</p>
+              <span class="entry-go">Open the diary →</span>
+            </a>
 
-        <a class="entry-card entry-games" href="#/games">
-          <span class="entry-for">for hangouts</span>
-          <span class="entry-icon" aria-hidden="true">
-            <svg viewBox="0 0 64 64" width="56" height="56" fill="none">
-              <rect x="8" y="22" width="48" height="28" rx="10" stroke="currentColor" stroke-width="2.2"/>
-              <circle cx="24" cy="36" r="4" fill="currentColor"/>
-              <circle cx="40" cy="36" r="4" fill="currentColor"/>
-              <path d="M24 30v12M18 36h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              <path d="M38 32l4 4 4-4M38 40l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </span>
-          <h2>Games</h2>
-          <p>When you’re with people and “what should we do?” needs a plot twist.</p>
-          <span class="entry-go">Start the night →</span>
-        </a>
-      </section>
+            <a class="entry-card entry-solo" href="#/games/solo">
+              <span class="entry-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" width="56" height="56" fill="none">
+                  <circle cx="32" cy="32" r="18" stroke="currentColor" stroke-width="2.2"/>
+                  <circle cx="32" cy="32" r="7" fill="currentColor" opacity="0.18"/>
+                  <path d="M32 18v6M32 40v6M18 32h6M40 32h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                  <path d="M22 22l4 4M38 38l4 4M42 22l-4 4M26 38l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <h2>Solo games</h2>
+              <p>Online games you can play alone, when you want a quick fun round.</p>
+              <span class="entry-go">Play solo →</span>
+            </a>
+          </div>
+        </section>
 
-      ${
-        latest.length
-          ? `<section class="preview-section">
-        <div class="section-head-row">
-          <h2>Latest Stories</h2>
-          <a class="btn btn-ghost tiny" href="#/stories">All stories</a>
-        </div>
-        <div class="story-list">${latest.map(storyCardHTML).join("")}</div>
-      </section>`
-          : ""
-      }
-
-      <section class="preview-section games-preview-home">
-        <div class="games-mini-grid">
-          <a class="game-mini undercover-mini game-mini-link" href="#/games">
-            <p class="badge-soon">Playable</p>
-            <h3>Undercover</h3>
-            <p>Clues, accusations, a little chaos.</p>
-          </a>
-          <a class="game-mini cards-mini game-mini-link" href="#/games">
-            <p class="badge-soon">Coming Soon</p>
-            <h3>Question Cards</h3>
-            <p>Prompts that make time disappear.</p>
-          </a>
-        </div>
-      </section>
+        <section class="home-door-section home-door-hangout" aria-labelledby="hangout-heading">
+          <p class="home-door-kicker" id="hangout-heading">for hangouts</p>
+          <div class="entry-stack">
+            <a class="entry-card entry-games entry-games-tall" href="#/games/multiplayer">
+              <span class="entry-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" width="56" height="56" fill="none">
+                  <rect x="8" y="22" width="48" height="28" rx="10" stroke="currentColor" stroke-width="2.2"/>
+                  <circle cx="24" cy="36" r="4" fill="currentColor"/>
+                  <circle cx="40" cy="36" r="4" fill="currentColor"/>
+                  <path d="M24 30v12M18 36h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M38 32l4 4 4-4M38 40l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <h2>Multiplayer games</h2>
+              <p>When you’re with people and “what should we do?” needs a plot twist.</p>
+              <span class="entry-go">Start the night →</span>
+            </a>
+          </div>
+        </section>
+      </div>
     </main>`;
 }
 
-function storyCardHTML(s) {
-  return `
-    <article class="story-preview">
-      <div class="meta-row">
-        <span class="tag">${escapeHtml(s.theme)}</span>
-        <span>${s.readingTime} min read</span>
-        ${s.publishedAt ? `<span>${escapeHtml(s.publishedAt)}</span>` : ""}
-      </div>
-      <h2>${escapeHtml(s.title)}</h2>
-      <p class="muted">${escapeHtml(s.excerpt)}</p>
-      <a class="btn btn-soft tiny" href="#/story/${s.slug}">Read Story</a>
-    </article>`;
+/* ---------- STORIES (password unlock + editor) ---------- */
+const STORIES_GATE_KEY = "funbylaia_stories_unlocked";
+const STORIES_PASSWORD = "sushiro";
+
+function isStoriesUnlocked() {
+  try {
+    return sessionStorage.getItem(STORIES_GATE_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
-/* ---------- STORIES ---------- */
+function unlockStories() {
+  try {
+    sessionStorage.setItem(STORIES_GATE_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+function renderStoriesGate(root) {
+  setMeta({
+    title: "Stories — fun by ayaya",
+    description: "Stories are locked for now.",
+  });
+  root.innerHTML = `
+    ${navHTML("stories")}
+    <main class="page page-narrow stories-gate">
+      <header class="section-head">
+        <h1>Stories are locked for now</h1>
+        <p class="muted">Enter the password to open this corner — and to write or edit.</p>
+      </header>
+      <form class="stories-gate-form" data-stories-gate novalidate>
+        <label class="sr-only" for="stories-pass">Password</label>
+        <input id="stories-pass" name="password" type="password" autocomplete="current-password" placeholder="Password" required />
+        <button type="submit" class="btn btn-primary">Unlock</button>
+        <p class="stories-gate-error muted" data-gate-error hidden>Wrong password. Try again.</p>
+      </form>
+      <p class="stories-gate-back"><a href="#/">← Back home</a></p>
+    </main>`;
+
+  const form = root.querySelector("[data-stories-gate]");
+  const err = root.querySelector("[data-gate-error]");
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const input = form.querySelector("#stories-pass");
+    const value = String(input?.value || "").trim();
+    if (value === STORIES_PASSWORD) {
+      unlockStories();
+      await hydrateFromApi();
+      render();
+      return;
+    }
+    if (err) err.hidden = false;
+    if (input) {
+      input.value = "";
+      input.focus();
+    }
+  });
+}
+
 function filterStories() {
-  let list = publishedStories();
+  let list = allStories().sort((a, b) => (b.publishedAt || "").localeCompare(a.publishedAt || ""));
   const q = storyFilters.search.trim().toLowerCase();
   if (q) {
     list = list.filter(
@@ -417,12 +528,30 @@ function filterStories() {
   return list;
 }
 
+function storyCardHTML(s) {
+  return `
+    <article class="story-card">
+      <div class="story-card-meta">
+        <span class="tag">${escapeHtml(s.theme)}</span>
+        ${s.status === "draft" ? `<span class="tag">Draft</span>` : ""}
+        <span>${s.readingTime} min</span>
+        ${s.publishedAt ? `<span>${escapeHtml(s.publishedAt)}</span>` : ""}
+      </div>
+      <h2>${escapeHtml(s.title)}</h2>
+      <p class="muted">${escapeHtml(s.excerpt)}</p>
+      <div class="story-card-actions">
+        <a class="btn btn-soft tiny" href="#/story/${s.slug}">Read Story</a>
+        <a class="btn btn-ghost tiny" href="#/story/${s.slug}/edit" data-edit-story>Edit</a>
+      </div>
+    </article>`;
+}
+
 function renderStoriesPage(root) {
   setMeta({
-    title: "Stories — alaia fun",
+    title: "Stories — fun by ayaya",
     description: "Stories for the moments you thought only you understood.",
   });
-  const themes = storyThemes();
+  const themes = storyThemesLive();
   const list = filterStories();
   root.innerHTML = `
     ${navHTML("stories")}
@@ -448,6 +577,8 @@ function renderStoriesPage(root) {
             <option value="longest" ${storyFilters.sort === "longest" ? "selected" : ""}>Longest read</option>
           </select>
           <button type="button" class="btn btn-ghost tiny" data-clear>Clear Filters</button>
+          <a class="btn btn-primary tiny" href="#/stories/new">+ New Story</a>
+          <button type="button" class="btn btn-ghost tiny" data-sync-stories>Sync to server</button>
           <span class="tiny muted" aria-live="polite">${list.length} ${list.length === 1 ? "story" : "stories"}</span>
         </div>
       </div>
@@ -455,7 +586,7 @@ function renderStoriesPage(root) {
         ${
           list.length
             ? list.map(storyCardHTML).join("")
-            : `<div class="empty-state"><p>No stories match those filters. Try clearing them — or come back when there’s something new to read.</p></div>`
+            : `<div class="empty-state"><p>No stories match those filters. Try clearing them — or write a new one.</p></div>`
         }
       </div>
     </main>`;
@@ -478,12 +609,20 @@ function renderStoriesPage(root) {
     storyFilters = { search: "", theme: "", sort: "newest" };
     rerender();
   };
+  $("[data-sync-stories]", root)?.addEventListener("click", async () => {
+    try {
+      await pushToApi(STORIES_PASSWORD);
+      showToast("Stories synced to server.");
+    } catch (err) {
+      showToast(err.message || "Sync failed — saved on this device only.");
+    }
+  });
 }
 
 function renderStoryPage(root, slug) {
-  const story = getStoryBySlug(slug);
+  const story = getStoryLive(slug);
   if (!story) {
-    setMeta({ title: "Story not found — alaia fun", description: "This story isn’t here." });
+    setMeta({ title: "Story not found — fun by ayaya", description: "This story isn’t here." });
     root.innerHTML = `
       ${navHTML("stories")}
       <main class="page page-narrow empty-state">
@@ -494,10 +633,10 @@ function renderStoryPage(root, slug) {
     return;
   }
   setMeta({
-    title: `${story.title} — alaia fun`,
+    title: `${story.title} — fun by ayaya`,
     description: story.excerpt,
   });
-  const { prev, next } = adjacentStories(story.slug);
+  const { prev, next } = adjacentStoriesLive(story.slug);
   root.innerHTML = `
     ${navHTML("stories")}
     <article class="article-shell story-read">
@@ -505,12 +644,13 @@ function renderStoryPage(root, slug) {
       <h1>${escapeHtml(story.title)}</h1>
       ${story.subtitle ? `<p class="story-subtitle">${escapeHtml(story.subtitle)}</p>` : ""}
       <div class="prose">
-        ${story.content.map((p) => `<p>${escapeHtml(p)}</p>`).join("")}
+        ${renderContentBlocks(story.content)}
       </div>
       <section class="story-end">
         <p class="question-line">Did any part of this feel familiar?</p>
         <div class="home-cta-row" style="justify-content:flex-start;margin-top:1rem">
           <a class="btn btn-soft" href="#/stories">Read Another Story</a>
+          <a class="btn btn-ghost" href="#/story/${story.slug}/edit">Edit Story</a>
           <button type="button" class="btn btn-ghost" data-share>Share Story</button>
         </div>
       </section>
@@ -536,22 +676,262 @@ function renderStoryPage(root, slug) {
   });
 }
 
-/* ---------- GAMES ---------- */
-function renderGamesPage(root) {
-  setMeta({
-    title: "Games · alaia fun",
-    description: "Games for people who want to know each other beyond the usual questions.",
-  });
-  root.innerHTML = `
-    ${navHTML("games")}
-    <main class="page games-page">
-      <header class="section-head">
-        <h1>Games for people who want to know each other beyond the usual questions.</h1>
-        <p class="muted">Play with friends, family, someone you love, or someone you’re still figuring out.</p>
-        <p class="question-line">Pick the kind of moment you want to create.</p>
-      </header>
+function blockEditorHTML(block, index) {
+  const type = block.type || "p";
+  if (type === "img") {
+    return `
+      <div class="story-block" data-block-index="${index}" data-block-type="img">
+        <div class="story-block-head">
+          <span class="tag">Image</span>
+          <button type="button" class="btn btn-ghost tiny" data-block-up ${index === 0 ? "disabled" : ""}>↑</button>
+          <button type="button" class="btn btn-ghost tiny" data-block-down>↓</button>
+          <button type="button" class="btn btn-ghost tiny" data-block-remove>Remove</button>
+        </div>
+        <label>Image URL
+          <input type="url" data-field="url" value="${escapeHtml(block.url || "")}" placeholder="https://…" />
+        </label>
+        <label>Alt / caption
+          <input type="text" data-field="alt" value="${escapeHtml(block.alt || "")}" placeholder="Short description" />
+        </label>
+        ${block.url ? `<img class="story-edit-preview" src="${escapeHtml(block.url)}" alt="" />` : ""}
+      </div>`;
+  }
+  if (type === "a") {
+    return `
+      <div class="story-block" data-block-index="${index}" data-block-type="a">
+        <div class="story-block-head">
+          <span class="tag">Link</span>
+          <button type="button" class="btn btn-ghost tiny" data-block-up ${index === 0 ? "disabled" : ""}>↑</button>
+          <button type="button" class="btn btn-ghost tiny" data-block-down>↓</button>
+          <button type="button" class="btn btn-ghost tiny" data-block-remove>Remove</button>
+        </div>
+        <label>URL
+          <input type="url" data-field="href" value="${escapeHtml(block.href || "")}" placeholder="https://…" />
+        </label>
+        <label>Label
+          <input type="text" data-field="label" value="${escapeHtml(block.label || "")}" placeholder="Link text" />
+        </label>
+      </div>`;
+  }
+  return `
+    <div class="story-block" data-block-index="${index}" data-block-type="p">
+      <div class="story-block-head">
+        <span class="tag">Paragraph</span>
+        <button type="button" class="btn btn-ghost tiny" data-block-up ${index === 0 ? "disabled" : ""}>↑</button>
+        <button type="button" class="btn btn-ghost tiny" data-block-down>↓</button>
+        <button type="button" class="btn btn-ghost tiny" data-block-remove>Remove</button>
+      </div>
+      <label class="sr-only" for="block-text-${index}">Paragraph</label>
+      <textarea id="block-text-${index}" data-field="text" rows="4" placeholder="Write… Use [label](https://url) for inline links.">${escapeHtml(block.text || "")}</textarea>
+    </div>`;
+}
 
-      <div class="games-grid">
+function readBlocksFromEditor(root) {
+  return [...root.querySelectorAll(".story-block")].map((el) => {
+    const type = el.getAttribute("data-block-type") || "p";
+    if (type === "img") {
+      return {
+        type: "img",
+        url: el.querySelector('[data-field="url"]')?.value.trim() || "",
+        alt: el.querySelector('[data-field="alt"]')?.value.trim() || "",
+      };
+    }
+    if (type === "a") {
+      return {
+        type: "a",
+        href: el.querySelector('[data-field="href"]')?.value.trim() || "",
+        label: el.querySelector('[data-field="label"]')?.value.trim() || "",
+      };
+    }
+    return { type: "p", text: el.querySelector('[data-field="text"]')?.value || "" };
+  });
+}
+
+function renderStoryEditor(root, slugOrNew) {
+  const isNew = slugOrNew === "new" || !slugOrNew;
+  let draft = isNew ? blankStory() : getStoryLive(slugOrNew);
+  if (!draft) {
+    showToast("Story not found.");
+    location.hash = "#/stories";
+    return;
+  }
+  // clone for editing
+  draft = JSON.parse(JSON.stringify(draft));
+  draft.content = normalizeContent(draft.content?.length ? draft.content : [{ type: "p", text: "" }]);
+
+  setMeta({
+    title: `${isNew ? "New story" : "Edit"} — fun by ayaya`,
+    description: "Edit stories.",
+  });
+
+  const paint = () => {
+    root.innerHTML = `
+      ${navHTML("stories")}
+      <main class="page page-narrow story-editor">
+        <header class="section-head">
+          <h1>${isNew ? "New story" : "Edit story"}</h1>
+          <p class="muted">Paragraphs, images, and links. Inline links in text: <code>[label](https://…)</code></p>
+        </header>
+        <form class="story-editor-form" data-story-form>
+          <label>Title
+            <input name="title" required value="${escapeHtml(draft.title)}" />
+          </label>
+          <label>Subtitle
+            <input name="subtitle" value="${escapeHtml(draft.subtitle || "")}" />
+          </label>
+          <label>Excerpt
+            <textarea name="excerpt" rows="2">${escapeHtml(draft.excerpt || "")}</textarea>
+          </label>
+          <div class="story-editor-row">
+            <label>Theme
+              <input name="theme" value="${escapeHtml(draft.theme || "")}" list="theme-list" />
+              <datalist id="theme-list">${storyThemesLive().map((t) => `<option value="${escapeHtml(t)}"></option>`).join("")}</datalist>
+            </label>
+            <label>Published
+              <input name="publishedAt" type="date" value="${escapeHtml(draft.publishedAt || "")}" />
+            </label>
+            <label>Status
+              <select name="status">
+                <option value="published" ${draft.status === "published" ? "selected" : ""}>Published</option>
+                <option value="draft" ${draft.status === "draft" ? "selected" : ""}>Draft</option>
+              </select>
+            </label>
+          </div>
+          <label class="story-check"><input type="checkbox" name="featured" ${draft.featured ? "checked" : ""} /> Featured</label>
+
+          <h2 class="story-blocks-title">Content</h2>
+          <div class="story-blocks" data-blocks>
+            ${draft.content.map((b, i) => blockEditorHTML(b, i)).join("")}
+          </div>
+          <div class="story-block-adders">
+            <button type="button" class="btn btn-soft tiny" data-add-p>+ Paragraph</button>
+            <button type="button" class="btn btn-soft tiny" data-add-img>+ Image</button>
+            <button type="button" class="btn btn-soft tiny" data-add-link>+ Link</button>
+          </div>
+
+          <div class="story-editor-actions">
+            <button type="submit" class="btn btn-primary">Save story</button>
+            <a class="btn btn-ghost" href="${isNew ? "#/stories" : `#/story/${draft.slug}`}">Cancel</a>
+            ${!isNew ? `<button type="button" class="btn btn-ghost" data-delete-story>Delete</button>` : ""}
+          </div>
+        </form>
+      </main>`;
+
+    const form = root.querySelector("[data-story-form]");
+    const blocksEl = root.querySelector("[data-blocks]");
+
+    const syncDraftMeta = () => {
+      const fd = new FormData(form);
+      draft.title = String(fd.get("title") || "");
+      draft.subtitle = String(fd.get("subtitle") || "");
+      draft.excerpt = String(fd.get("excerpt") || "");
+      draft.theme = String(fd.get("theme") || "");
+      draft.publishedAt = String(fd.get("publishedAt") || "");
+      draft.status = String(fd.get("status") || "published");
+      draft.featured = !!form.querySelector('[name="featured"]')?.checked;
+      draft.content = readBlocksFromEditor(root);
+    };
+
+    const refreshBlocks = () => {
+      syncDraftMeta();
+      blocksEl.innerHTML = draft.content.map((b, i) => blockEditorHTML(b, i)).join("");
+      wireBlocks();
+    };
+
+    const wireBlocks = () => {
+      blocksEl.querySelectorAll(".story-block").forEach((el) => {
+        const i = Number(el.getAttribute("data-block-index"));
+        el.querySelector("[data-block-remove]")?.addEventListener("click", () => {
+          syncDraftMeta();
+          draft.content.splice(i, 1);
+          if (!draft.content.length) draft.content.push({ type: "p", text: "" });
+          refreshBlocks();
+        });
+        el.querySelector("[data-block-up]")?.addEventListener("click", () => {
+          if (i <= 0) return;
+          syncDraftMeta();
+          const t = draft.content[i - 1];
+          draft.content[i - 1] = draft.content[i];
+          draft.content[i] = t;
+          refreshBlocks();
+        });
+        el.querySelector("[data-block-down]")?.addEventListener("click", () => {
+          syncDraftMeta();
+          if (i >= draft.content.length - 1) return;
+          const t = draft.content[i + 1];
+          draft.content[i + 1] = draft.content[i];
+          draft.content[i] = t;
+          refreshBlocks();
+        });
+      });
+    };
+
+    root.querySelector("[data-add-p]")?.addEventListener("click", () => {
+      syncDraftMeta();
+      draft.content.push({ type: "p", text: "" });
+      refreshBlocks();
+    });
+    root.querySelector("[data-add-img]")?.addEventListener("click", () => {
+      syncDraftMeta();
+      draft.content.push({ type: "img", url: "", alt: "" });
+      refreshBlocks();
+    });
+    root.querySelector("[data-add-link]")?.addEventListener("click", () => {
+      syncDraftMeta();
+      draft.content.push({ type: "a", href: "", label: "" });
+      refreshBlocks();
+    });
+
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      syncDraftMeta();
+      if (!draft.title.trim()) {
+        showToast("Title is required.");
+        return;
+      }
+      draft.content = draft.content.filter((b) => {
+        if (b.type === "p") return b.text.trim();
+        if (b.type === "img") return b.url.trim();
+        if (b.type === "a") return b.href.trim();
+        return true;
+      });
+      if (!draft.content.length) draft.content.push({ type: "p", text: "" });
+      if (!draft.excerpt.trim()) {
+        const first = draft.content.find((b) => b.type === "p");
+        draft.excerpt = (first?.text || "").slice(0, 180);
+      }
+      draft.readingTime = estimateReadingTime(draft.content);
+      const saved = upsertStory(draft);
+      try {
+        await pushToApi(STORIES_PASSWORD);
+        showToast("Saved & synced.");
+      } catch {
+        showToast("Saved on this device.");
+      }
+      location.hash = `#/story/${saved.slug}`;
+    });
+
+    root.querySelector("[data-delete-story]")?.addEventListener("click", async () => {
+      if (!confirm("Delete this story? Seed stories will hide until you clear overrides.")) return;
+      deleteStory(draft.id);
+      try {
+        await pushToApi(STORIES_PASSWORD);
+      } catch {
+        /* local only */
+      }
+      showToast("Story deleted.");
+      location.hash = "#/stories";
+    });
+
+    wireBlocks();
+  };
+
+  paint();
+}
+
+/* ---------- GAMES ---------- */
+function gameCardUndercover() {
+  return `
         <article class="game-card game-undercover">
           <div class="uc-card-art" aria-hidden="true">
             <img src="/static/img/undercover-agent.png" alt="" width="480" height="360" loading="lazy" />
@@ -581,8 +961,11 @@ function renderGamesPage(root) {
             <span class="uc-cta-ico" aria-hidden="true">▶</span>
             CONTINUE MISSION
           </a>
-        </article>
+        </article>`;
+}
 
+function gameCardTtt() {
+  return `
         <article class="game-card game-ttt">
           <div class="ttt-card-art" aria-hidden="true">
             <div class="ttt-card-board">
@@ -622,34 +1005,115 @@ function renderGamesPage(root) {
             <span class="ttt-cta-ico" aria-hidden="true">▶</span>
             PLAY TOGETHER
           </a>
-        </article>
+        </article>`;
+}
 
+function gameCardRsm() {
+  return `
         <article class="game-card game-rsm">
           <div class="rsm-card-art" aria-hidden="true">
-            <div class="rsm-mini-chart"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-            <span class="rsm-art-ticker">LOVR +200%</span>
+            <div class="rsm-art-grid"></div>
+            <div class="rsm-mini-chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <svg class="rsm-sparkline" viewBox="0 0 120 40" width="120" height="40">
+              <path d="M0 28 L18 24 L32 30 L48 12 L64 18 L80 8 L96 14 L120 4" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <div class="rsm-float-chip c1">+$48</div>
+            <div class="rsm-float-chip c2">🚀</div>
+            <div class="rsm-float-chip c3">-12%</div>
+            <span class="rsm-art-ticker"><b>VSM</b> · LIVE +200%</span>
           </div>
           <div class="game-card-top">
             <div class="game-card-badges">
               <span class="badge-soon badge-live rsm-live-badge">PLAYABLE · 2–6</span>
               <span class="badge-mode badge-online" aria-label="Online multiplayer">ONLINE</span>
             </div>
-            <span class="rsm-stamp" aria-hidden="true">📈 OPEN</span>
+            <span class="rsm-stamp" aria-hidden="true">📈 LIVE</span>
           </div>
-          <h2>Relationship Stock Market</h2>
-          <p class="rsm-card-tagline">Predict your people. Bet your cash. Panic together.</p>
-          <p>Five rounds of secret investments, market chaos, hold-or-sell drama, and friendship-based stock tips.</p>
+          <div class="rsm-card-icons" aria-hidden="true">
+            <span>📊</span><span>💸</span><span>🏆</span>
+          </div>
+          <h2>Virtual Stock Market</h2>
+          <p class="rsm-card-tagline">Bet together. Panic together. Win the floor.</p>
+          <p>Five rounds of secret investments, wild market swings, hold-or-sell drama, and reading the room.</p>
           <ul class="game-meta">
             <li><strong>Best for:</strong> Couples, friend groups, game nights</li>
             <li><strong>Players:</strong> 2–6</li>
             <li><strong>Mood:</strong> Chaotic, social, replayable</li>
           </ul>
           <a class="btn btn-rsm-cta" href="#/rsm" data-start-rsm>
+            <span class="rsm-cta-pulse" aria-hidden="true"></span>
             <span aria-hidden="true">▶</span>
             OPEN THE MARKET
           </a>
-        </article>
+        </article>`;
+}
 
+function gameCardFoodChain() {
+  return `
+        <article class="game-card game-fc">
+          <div class="fc-card-art" aria-hidden="true">
+            <div class="fc-art-chain">
+              <span>APPLE</span><i>→</i><span>EGG</span><i>→</i><span>GRAPE</span>
+            </div>
+            <div class="fc-art-timer">60</div>
+            <span class="fc-art-apple">🍎</span>
+          </div>
+          <div class="game-card-top">
+            <div class="game-card-badges">
+              <span class="badge-soon badge-live">PLAYABLE · EN/ID</span>
+              <span class="badge-mode badge-online" aria-label="Online game">ONLINE</span>
+            </div>
+            <span class="fc-stamp" aria-hidden="true">🍎 60s</span>
+          </div>
+          <h2>Food Chain 60 🍎</h2>
+          <p class="fc-card-tagline">Juicy word chains in 60 seconds.</p>
+          <p>Pick English or Indonesian, learn the rule, then race the clock. Each food starts with the last letter of the one before.</p>
+          <ul class="game-meta">
+            <li><strong>Best for:</strong> Quick solo rounds, waiting rooms, brain warm-ups</li>
+            <li><strong>Players:</strong> 1 · EN / ID</li>
+            <li><strong>Mood:</strong> Juicy, fast, snack-brained</li>
+          </ul>
+          <a class="btn btn-fc-cta" href="#/foodchain" data-start-fc>
+            <span aria-hidden="true">▶</span>
+            PLAY ONLINE
+          </a>
+        </article>`;
+}
+
+function gameCardHigherLower() {
+  return `
+        <article class="game-card game-hl">
+          <div class="hl-card-art" aria-hidden="true">
+            <div class="hl-art-row">
+              <span class="hl-art-chip">How to cook rice</span>
+              <span class="hl-art-vs">VS</span>
+              <span class="hl-art-chip">How to quit my job</span>
+            </div>
+          </div>
+          <div class="game-card-top">
+            <div class="game-card-badges">
+              <span class="badge-soon badge-live">PLAYABLE · 10 ROUNDS</span>
+              <span class="badge-mode badge-online" aria-label="Online game">ONLINE</span>
+            </div>
+            <span class="fc-stamp" aria-hidden="true">📈</span>
+          </div>
+          <h2>Higher or Lower 📈</h2>
+          <p class="hl-card-tagline">Which one does the internet search more?</p>
+          <p>Two search queries. Pick the bigger one. Volumes are SEO-style estimates for the last 1 month.</p>
+          <ul class="game-meta">
+            <li><strong>Best for:</strong> Quick solo brain snacks</li>
+            <li><strong>Players:</strong> 1</li>
+            <li><strong>Mood:</strong> Curious, competitive, scroll-culture</li>
+          </ul>
+          <a class="btn btn-hl-cta" href="#/higherlower" data-start-hl>
+            <span aria-hidden="true">▶</span>
+            START GAME
+          </a>
+        </article>`;
+}
+
+function gameCardQuestionCards() {
+  return `
         <article class="game-card game-question-cards">
           <div class="game-card-top">
             <span class="badge-soon" aria-label="Coming soon">Coming Soon</span>
@@ -665,9 +1129,68 @@ function renderGamesPage(root) {
             <li><strong>Mood:</strong> Curious, meaningful, and unexpectedly personal</li>
           </ul>
           <button type="button" class="btn btn-soft is-disabled-look" data-coming-soon aria-disabled="true">Question Cards — Coming Soon</button>
-        </article>
-      </div>
-    </main>`;
+        </article>`;
+}
+
+function gameCardColorConfusion() {
+  return `
+        <article class="game-card game-cc">
+          <div class="cc-card-art" aria-hidden="true">
+            <span class="cc-art-word">BLUE</span>
+            <span class="cc-art-hint">word says blue · color is red</span>
+          </div>
+          <div class="game-card-top">
+            <div class="game-card-badges">
+              <span class="badge-soon badge-live">PLAYABLE · 30s</span>
+              <span class="badge-mode badge-online" aria-label="Online game">ONLINE</span>
+            </div>
+            <span class="fc-stamp" aria-hidden="true">🎨</span>
+          </div>
+          <h2>Color Confusion 🎨</h2>
+          <p class="cc-card-tagline">Don’t read the word. Trust your eyes.</p>
+          <p>A color word appears in the wrong font color. Pick the real color as fast as you can. 30 seconds. No mercy.</p>
+          <ul class="game-meta">
+            <li><strong>Best for:</strong> Brain warm-ups and rapid-fire rounds</li>
+            <li><strong>Players:</strong> 1</li>
+            <li><strong>Mood:</strong> Fast, tricky, slightly chaotic</li>
+          </ul>
+          <a class="btn btn-cc-cta" href="#/colorconfusion" data-start-cc>
+            <span aria-hidden="true">▶</span>
+            START GAME
+          </a>
+        </article>`;
+}
+
+function gameCardOjolRush() {
+  return `
+        <article class="game-card game-ojol">
+          <div class="ojol-card-hero">
+            <img src="/static/img/ojol-rush-card-hero.png" alt="" width="960" height="540" loading="lazy" />
+          </div>
+          <div class="game-card-top">
+            <div class="game-card-badges">
+              <span class="badge-soon badge-live">PLAYABLE · 3D</span>
+              <span class="badge-mode badge-online" aria-label="Online game">ONLINE</span>
+            </div>
+            <span class="fc-stamp" aria-hidden="true">🛵</span>
+          </div>
+          <h2>Ojol Rush: Sudirman</h2>
+          <p class="ojol-card-tagline">Endless runner through Sudirman traffic.</p>
+          <p>Three lanes, jump, dodge cars and buses, grab coins and power-ups. How far can you ride?</p>
+          <ul class="game-meta">
+            <li><strong>Best for:</strong> Quick adrenaline solo runs</li>
+            <li><strong>Players:</strong> 1</li>
+            <li><strong>Mood:</strong> Fast, colorful, Jakarta morning rush</li>
+          </ul>
+          <a class="btn btn-ojol-cta btn-game-load is-loading" data-ojol-cta data-start-ojol role="button" aria-busy="true" aria-disabled="true">
+            <span class="btn-load-fill" data-load-fill style="width:0%"></span>
+            <span class="btn-load-label" data-load-label>Loading 0%</span>
+          </a>
+          <p class="ojol-load-hint" data-ojol-hint>Preparing 3D assets…</p>
+        </article>`;
+}
+
+function wireGamesActions(root) {
   wireComingSoon(root);
   root.querySelector("[data-start-undercover]")?.addEventListener("click", () => {
     playUndercoverJingle();
@@ -680,11 +1203,114 @@ function renderGamesPage(root) {
   root.querySelector("[data-start-rsm]")?.addEventListener("click", () => {
     startRsm();
   });
+  root.querySelector("[data-start-fc]")?.addEventListener("click", () => {
+    startFoodChain();
+  });
+  root.querySelector("[data-start-hl]")?.addEventListener("click", () => {
+    startHigherLower();
+  });
+  root.querySelector("[data-start-cc]")?.addEventListener("click", () => {
+    startColorConfusion();
+  });
+  const ojolBtn = root.querySelector("[data-ojol-cta]");
+  if (ojolBtn) {
+    const hint = root.querySelector("[data-ojol-hint]");
+    wireGameLoadButton(ojolBtn, {
+      key: "ojol-rush",
+      ensure: ensureOjolPreload,
+      href: GAME_HREF,
+      readyLabel: "▶ START RIDE",
+      loadingLabel: (p) => `Loading ${p}%`,
+      errorLabel: "Retry load",
+    });
+    ensureOjolPreload(({ status, progress }) => {
+      if (!hint) return;
+      if (status === "ready") hint.textContent = "Ready when you are.";
+      else if (status === "error") hint.textContent = "Load failed — tap to retry.";
+      else hint.textContent = `Downloading 3D ride… ${progress}%`;
+    });
+  }
+}
+
+function renderGamesChooser(root) {
+  setMeta({
+    title: "Games · fun by ayaya",
+    description: "Choose solo online games or multiplayer hangout games.",
+  });
+  root.innerHTML = `
+    ${navHTML("games")}
+    <main class="page games-page">
+      <header class="section-head">
+        <h1>What kind of game night is this?</h1>
+        <p class="muted">Solo first if it’s just you. Multiplayer if you’re with someone.</p>
+        <p class="question-line">Pick a lane, then choose a game.</p>
+      </header>
+
+      <div class="games-mode-duo" aria-label="Choose game mode">
+        <a class="games-mode-card mode-solo" href="#/games/solo">
+          <span class="games-mode-badge">all online</span>
+          <span class="games-mode-ico" aria-hidden="true">🍎</span>
+          <h2>Solo</h2>
+          <p>Quick online games for me time. Race the clock, beat your own best.</p>
+          <span class="entry-go">Open solo menu →</span>
+        </a>
+        <a class="games-mode-card mode-multi" href="#/games/multiplayer">
+          <span class="games-mode-badge">together</span>
+          <span class="games-mode-ico" aria-hidden="true">◇</span>
+          <h2>Multiplayer</h2>
+          <p>Hangout games for couples, friends, and groups who want a plot twist.</p>
+          <span class="entry-go">Open multiplayer menu →</span>
+        </a>
+      </div>
+    </main>`;
+}
+
+function renderGamesPage(root, mode) {
+  const m = String(mode || "").toLowerCase();
+  if (m !== "solo" && m !== "multiplayer") {
+    return renderGamesChooser(root);
+  }
+
+  const isSolo = m === "solo";
+  setMeta({
+    title: isSolo ? "Solo Games · fun by ayaya" : "Multiplayer Games · fun by ayaya",
+    description: isSolo
+      ? "Online solo games for me time."
+      : "Multiplayer games for hangouts and shared nights.",
+  });
+
+  const cards = isSolo
+    ? [gameCardFoodChain(), gameCardHigherLower(), gameCardColorConfusion(), gameCardOjolRush()].join("\n")
+    : [gameCardUndercover(), gameCardTtt(), gameCardRsm(), gameCardQuestionCards()].join("\n");
+
+  root.innerHTML = `
+    ${navHTML("games")}
+    <main class="page games-page">
+      <header class="section-head">
+        <p class="games-back-row"><a class="games-back-link" href="#/games">← All games</a></p>
+        <h1>${isSolo ? "Solo games" : "Multiplayer games"}</h1>
+        <p class="muted">${
+          isSolo
+            ? "All online. Pick a language, learn the rule, then play."
+            : "Play with friends, family, someone you love, or someone you’re still figuring out."
+        }</p>
+        <p class="question-line">${isSolo ? "One player. Full focus." : "Pick the kind of moment you want to create."}</p>
+      </header>
+
+      <div class="games-grid">
+        ${cards}
+      </div>
+    </main>`;
+  wireGamesActions(root);
 }
 
 window.addEventListener("hashchange", render);
-if (!location.hash || location.hash === "#" || location.hash === "#/landing" || location.hash === "#/bumper") {
+if (!location.hash || location.hash === "#" || location.hash === "#/landing") {
+  location.hash = hasSeenBumperThisSession() ? "#/home" : "#/bumper";
+} else if (location.hash === "#/bumper" && hasSeenBumperThisSession()) {
   location.hash = "#/home";
 }
-if (!hasFinishedLanding()) markLandingDone();
-render();
+(async () => {
+  if (isStoriesUnlocked()) await hydrateFromApi();
+  render();
+})();

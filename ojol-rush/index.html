@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>Ojol Rush: Sudirman</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #0f172a; touch-action: none; }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      #ojol-boot {
+        position: fixed; inset: 0; z-index: 50;
+        display: grid; place-items: center; padding: 1.5rem;
+        background:
+          radial-gradient(700px 400px at 20% 0%, rgba(56, 189, 248, 0.22), transparent 55%),
+          radial-gradient(600px 360px at 90% 100%, rgba(22, 163, 74, 0.2), transparent 50%),
+          #0f172a;
+        font-family: "Plus Jakarta Sans", "Nunito", system-ui, sans-serif;
+        color: #e2e8f0;
+      }
+      #ojol-boot .boot-card {
+        width: min(360px, 100%);
+        text-align: center;
+        display: grid;
+        gap: 0.85rem;
+        justify-items: center;
+      }
+      #ojol-boot h1 {
+        margin: 0;
+        font-family: Nunito, system-ui, sans-serif;
+        font-weight: 800;
+        font-size: 1.45rem;
+        color: #4ade80;
+      }
+      #ojol-boot p { margin: 0; font-size: 0.85rem; color: #94a3b8; font-weight: 600; }
+      #ojol-boot .boot-btn {
+        position: relative;
+        overflow: hidden;
+        min-width: 12.5rem;
+        padding: 0.9rem 1.55rem;
+        border-radius: 999px;
+        border: none;
+        color: #fff;
+        background: linear-gradient(180deg, #19c32a, #00aa13);
+        font-family: Nunito, system-ui, sans-serif;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        box-shadow: 0 8px 0 #008c10, 0 14px 24px rgba(0, 170, 19, 0.28);
+      }
+      #ojol-boot .boot-fill {
+        position: absolute; inset: 0 auto 0 0; width: 8%;
+        background: rgba(255,255,255,0.3);
+        transition: width 0.2s ease;
+      }
+      #ojol-boot .boot-label { position: relative; z-index: 1; font-variant-numeric: tabular-nums; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="ojol-boot" aria-live="polite">
+      <div class="boot-card">
+        <h1>Ojol Rush: Sudirman</h1>
+        <p id="ojol-boot-hint">Setting expectations…</p>
+        <button class="boot-btn" type="button" disabled>
+          <span class="boot-fill" id="ojol-boot-fill"></span>
+          <span class="boot-label" id="ojol-boot-label">Loading 0%</span>
+        </button>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var fill = document.getElementById("ojol-boot-fill");
+        var label = document.getElementById("ojol-boot-label");
+        var hint = document.getElementById("ojol-boot-hint");
+        var p = 4;
+        var t = setInterval(function () {
+          p = Math.min(90, p + 1.5 + Math.random() * 3);
+          if (fill) fill.style.width = Math.round(p) + "%";
+          if (label) label.textContent = "Loading " + Math.round(p) + "%";
+          if (hint) hint.textContent = "Loading ride assets… " + Math.round(p) + "%";
+        }, 180);
+        window.__ojolBootClear = function () {
+          clearInterval(t);
+          var b = document.getElementById("ojol-boot");
+          if (b) b.remove();
+        };
+      })();
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

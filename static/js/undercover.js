@@ -132,7 +132,7 @@ export function renderUndercover(root, deps) {
   const { navHTML, setMeta, showToast } = deps;
   ensureGame();
   setMeta({
-    title: "Undercover · alaia fun",
+    title: "Undercover · fun by ayaya",
     description: "Game peran tersembunyi: deskripsikan, tuduh, temukan siapa yang menyamar.",
   });
 
@@ -141,7 +141,7 @@ export function renderUndercover(root, deps) {
       ${navHTML("games")}
       <main class="page undercover-page undercover-ops">
         <div class="uc-ops-bg" aria-hidden="true"></div>
-        <a class="uc-back" href="#/games">← Abort to Games</a>
+        <a class="uc-back" href="#/games/multiplayer">← Abort to Games</a>
         ${body}
       </main>`;
     wire(root, deps);
@@ -343,7 +343,7 @@ export function renderUndercover(root, deps) {
       </ul>
       <div class="uc-actions">
         <button type="button" class="btn btn-primary" data-again>Main lagi</button>
-        <a class="btn btn-ghost" href="#/games">Keluar</a>
+        <a class="btn btn-ghost" href="#/games/multiplayer">Keluar</a>
       </div>`);
   }
 }

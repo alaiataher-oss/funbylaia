@@ -1,4 +1,4 @@
-/** Relationship Stock Market — client */
+/** Virtual Stock Market — client */
 
 const SESSION_KEY = "funbylaia_rsm_session";
 const AVATARS = ["💖", "🌟", "🎯", "🌈", "🔥", "🦄", "🍀", "🎲"];
@@ -13,16 +13,33 @@ function esc(str) {
 
 function loadSession() {
   try {
-    return JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
+    const raw =
+      localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || "null";
+    const data = JSON.parse(raw);
+    if (data?.code && data?.playerId) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+    return data;
   } catch {
     return null;
   }
 }
 function saveSession(data) {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
+  localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 function clearSession() {
-  sessionStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(SESSION_KEY);
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 async function api(path, opts = {}) {
@@ -61,8 +78,8 @@ function moveLabel(pct) {
 export function renderRsm(root, deps) {
   const { navHTML, setMeta, showToast } = deps;
   setMeta({
-    title: "Relationship Stock Market · alaia fun",
-    description: "Predict, bet, panic, celebrate — with your people.",
+    title: "Virtual Stock Market · fun by ayaya",
+    description: "Bet together. Panic together. Win the floor.",
   });
 
   let session = loadSession();
@@ -94,19 +111,30 @@ export function renderRsm(root, deps) {
 
   const entryHTML = () => `
     <header class="rsm-hero">
-      <p class="rsm-kicker">📈 playful markets</p>
-      <h1>Relationship Stock Market</h1>
-      <p class="rsm-sub">Predict your people. Bet your cash. Survive five rounds.</p>
+      <div class="rsm-hero-stage" aria-hidden="true">
+        <div class="rsm-hero-ring"></div>
+        <div class="rsm-hero-ring r2"></div>
+        <div class="rsm-hero-chart"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <span class="rsm-hero-chip up">+200%</span>
+        <span class="rsm-hero-chip down">-80%</span>
+      </div>
+      <p class="rsm-kicker">📈 virtual trading floor</p>
+      <h1>Virtual Stock Market</h1>
+      <p class="rsm-sub">Bet together. Panic together. Survive five wild rounds.</p>
     </header>
     <div class="rsm-entry-grid">
-      <form class="rsm-card" data-create>
+      <form class="rsm-card rsm-card-create" data-create>
+        <div class="rsm-card-badge">HOST</div>
         <h2>Create Room</h2>
+        <p class="rsm-card-hint">You’ll get a code to share.</p>
         <label class="rsm-label" for="rsm-name-c">Display name</label>
         <input id="rsm-name-c" name="name" maxlength="18" required placeholder="Your name" value="${esc(name)}" />
         <button type="submit" class="btn btn-primary rsm-cta">Create Room</button>
       </form>
-      <form class="rsm-card" data-join>
+      <form class="rsm-card rsm-card-join" data-join>
+        <div class="rsm-card-badge join">JOIN</div>
         <h2>Join Room</h2>
+        <p class="rsm-card-hint">Enter their code and jump in.</p>
         <label class="rsm-label" for="rsm-name-j">Display name</label>
         <input id="rsm-name-j" name="name" maxlength="18" required placeholder="Your name" value="${esc(name)}" />
         <label class="rsm-label" for="rsm-code">Room code</label>
@@ -114,7 +142,7 @@ export function renderRsm(root, deps) {
         <button type="submit" class="btn btn-soft rsm-cta">Join Room</button>
       </form>
     </div>
-    <a class="rsm-back" href="#/games">← Back to Games</a>
+    <a class="rsm-back" href="#/games/multiplayer">← Back to Games</a>
   `;
 
   const playersLockRow = (keyLocked) => {
@@ -134,7 +162,7 @@ export function renderRsm(root, deps) {
       <div class="rsm-portfolio">
         <div><span>Cash</span><strong>${money(p.cash)}</strong></div>
         <div><span>Holdings</span><strong>${money(p.position)}</strong></div>
-        <div class="nw"><span>Net Worth</span><strong>${money(p.netWorth)}</strong></div>
+        <div class="nw"><span>Net Worth</span><strong class="rsm-nw-value">${money(p.netWorth)}</strong></div>
       </div>`;
   };
 
@@ -146,6 +174,8 @@ export function renderRsm(root, deps) {
 
     let body = "";
     if (status === "LOBBY") {
+      const n = (state.players || []).length;
+      const needMore = n < 2;
       body = `
         <section class="rsm-panel">
           <div class="rsm-code-row">
@@ -155,17 +185,47 @@ export function renderRsm(root, deps) {
             </div>
             <button type="button" class="btn btn-ghost" data-copy>Copy Code</button>
           </div>
-          <p class="muted">Share with 1–5 friends. Host starts when you’re ready.</p>
+          <p class="rsm-lobby-tip">Share this code with a friend. You need <strong>at least 2 people</strong> (you + 1 more) before the market can open.</p>
           <ul class="rsm-players">${(state.players || [])
             .map(
               (pl) =>
                 `<li><span class="rsm-av">${AVATARS[pl.avatar % 8]}</span> ${esc(pl.name)}${pl.id === state.hostId ? " · host" : ""}${pl.connected ? "" : " · away"}</li>`
             )
             .join("")}</ul>
+          <p class="rsm-player-count">${n} / 6 players · ${needMore ? "waiting for someone to join…" : "ready to brief"}</p>
           ${
             state.youAreHost
-              ? `<button type="button" class="btn btn-primary rsm-cta" data-start ${(state.players || []).length < 2 ? "disabled" : ""}>Start Market →</button>`
-              : `<p class="rsm-wait">Waiting for host to start…</p>`
+              ? needMore
+                ? `<button type="button" class="btn btn-primary rsm-cta" disabled>Start Market →</button>
+                   <p class="rsm-error-hint">Can’t start yet — invite at least one more player with the code above.</p>`
+                : `<button type="button" class="btn btn-primary rsm-cta" data-start>Start Market →</button>
+                   <p class="muted tiny" style="text-align:center;margin-top:0.5rem">Next: a quick beginner guide, then Round 1.</p>`
+              : `<p class="rsm-wait">Waiting for the host to start…</p>`
+          }
+        </section>`;
+    } else if (status === "BRIEFING") {
+      body = `
+        <section class="rsm-panel rsm-briefing">
+          <p class="rsm-kicker">before we trade</p>
+          <h2>How this game works</h2>
+          <p class="rsm-brief-lead">No finance knowledge needed. Think of it like a fun money game with your friends.</p>
+          <ol class="rsm-howto">
+            <li><strong>Everyone starts with $100.</strong> That’s your cash.</li>
+            <li><strong>There are 5 rounds.</strong> Each round, a fake stock appears (like LOVR).</li>
+            <li><strong>You secretly choose how much cash to invest</strong> — $0, a little, or almost all. Nobody sees your amount until everyone locks.</li>
+            <li><strong>Then the market moves.</strong> The stock can jump up (you gain) or crash down (you lose). Clues help a bit, but nothing is guaranteed.</li>
+            <li><strong>Hold or Sell:</strong> Keep your investment for the next round (risky), or sell it back into cash (safer).</li>
+            <li><strong>Some rounds ask a fun question</strong> (Beach vs Mountains). The room’s answers gently nudge the market — it’s about reading your people.</li>
+            <li><strong>After Round 5, everything sells automatically.</strong> Highest net worth wins <em>Wall Street Menace</em>.</li>
+          </ol>
+          <div class="rsm-brief-loop">
+            <span>Predict</span>→<span>Bet</span>→<span>Lock</span>→<span>Reveal</span>→<span>Panic / Celebrate</span>
+          </div>
+          ${playersLockRow("briefingReady")}
+          ${
+            p?.briefingReady
+              ? `<p class="rsm-locked-msg">You’re ready. Waiting for everyone…</p>`
+              : `<button type="button" class="btn btn-primary rsm-cta" data-briefing-ready>I get it — let’s play</button>`
           }
         </section>`;
     } else if (status === "QUESTION" && m.question) {
@@ -322,16 +382,40 @@ export function renderRsm(root, deps) {
   };
 
   const refresh = async () => {
-    if (!session?.code || !session?.playerId) return;
+    if (!session?.code || !session?.playerId || busy) return;
     try {
-      state = await api(`/rooms/${session.code}?playerId=${encodeURIComponent(session.playerId)}`);
+      try {
+        await api(`/rooms/${session.code}/heartbeat`, {
+          method: "POST",
+          body: JSON.stringify({ playerId: session.playerId }),
+        });
+      } catch {
+        /* presence best-effort */
+      }
+      if (busy) return;
+      const data = await api(`/rooms/${session.code}?playerId=${encodeURIComponent(session.playerId)}`);
+      if (busy) return;
+      state = data;
       if (state.status !== lastStatus) {
         lastStatus = state.status;
         if (state.status === "INVESTING") investAmt = 0;
       }
+      view = "room";
       paint();
     } catch (err) {
-      showToast(err.message || "Lost connection.");
+      if (busy) return;
+      const msg = err.message || "Lost connection.";
+      if (/not found|expired|abandoned|not a player/i.test(msg)) {
+        clearSession();
+        session = null;
+        state = null;
+        view = "entry";
+        paint();
+        showToast("That room is no longer available. Start or join a new one.");
+        stopPoll();
+        return;
+      }
+      showToast(msg);
     }
   };
 
@@ -406,6 +490,23 @@ export function renderRsm(root, deps) {
       busy = true;
       try {
         state = await api(`/rooms/${session.code}/start`, {
+          method: "POST",
+          body: JSON.stringify({ playerId: session.playerId }),
+        });
+        paint();
+        showToast("Read the guide, then tap ready.");
+      } catch (err) {
+        showToast(err.message);
+      } finally {
+        busy = false;
+      }
+    });
+
+    root.querySelector("[data-briefing-ready]")?.addEventListener("click", async () => {
+      if (busy || !session) return;
+      busy = true;
+      try {
+        state = await api(`/rooms/${session.code}/briefing-ready`, {
           method: "POST",
           body: JSON.stringify({ playerId: session.playerId }),
         });
@@ -511,17 +612,19 @@ export function renderRsm(root, deps) {
     });
   };
 
-  if (session?.code) {
+  if (session?.code && session?.playerId) {
     view = "room";
     paint();
     refresh().then(startPoll);
   } else {
+    view = "entry";
     paint();
   }
 
   root._rsmCleanup = stopPoll;
 }
 
+/** Keep session so refresh / revisit can resume. */
 export function startRsm() {
-  clearSession();
+  /* intentionally do not clearSession() */
 }
